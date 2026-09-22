@@ -11,19 +11,29 @@ document.getElementById('nav').addEventListener('click', (e) => {
   if (e.target.tagName === 'A') header.classList.remove('open');
 });
 
-// "Quero esse produto" cards -> scroll to form and preselect interesse
+// "Quero esse produto" (cards) e CTAs do portfólio -> scroll ao form e preselect do interesse
+function preencherInteresse(interesse) {
+  const select = document.getElementById('interesse');
+  if (interesse && select) {
+    const option = Array.from(select.options).find((o) => o.value === interesse);
+    if (option) select.value = interesse;
+  }
+  document.getElementById('contato').scrollIntoView({ behavior: 'smooth' });
+  document.getElementById('nome')?.focus({ preventScroll: true });
+}
+
 document.querySelectorAll('.card-btn:not(.btn-comprar)').forEach((btn) => {
   if (btn.tagName !== 'BUTTON') return;
   btn.addEventListener('click', () => {
     const card = btn.closest('.card');
-    const interesse = card?.dataset.interesse;
-    const select = document.getElementById('interesse');
-    if (interesse && select) {
-      const option = Array.from(select.options).find((o) => o.value === interesse);
-      if (option) select.value = interesse;
-    }
-    document.getElementById('contato').scrollIntoView({ behavior: 'smooth' });
-    document.getElementById('nome')?.focus({ preventScroll: true });
+    preencherInteresse(card?.dataset.interesse);
+  });
+});
+
+document.querySelectorAll('[data-interesse]:not(.card)').forEach((el) => {
+  el.addEventListener('click', (e) => {
+    e.preventDefault();
+    preencherInteresse(el.dataset.interesse);
   });
 });
 
