@@ -1,0 +1,12 @@
+Mes;Categoria;Tipo;Descricao;Valor Previsto;Valor Realizado
+Janeiro;Receita Operacional;Entrada;Vendas/Servicos prestados;0;0
+Janeiro;Outras Receitas;Entrada;Rendimentos/Outras entradas;0;0
+Janeiro;Fornecedores;Saida;Compra de mercadorias/insumos;0;0
+Janeiro;Folha de Pagamento;Saida;Salarios e encargos;0;0
+Janeiro;Impostos e Taxas;Saida;Tributos federais/estaduais/municipais;0;0
+Janeiro;Despesas Fixas;Saida;Aluguel/Contas/Assinaturas;0;0
+Janeiro;Despesas Variaveis;Saida;Marketing/Comissoes/Manutencao;0;0
+Janeiro;Emprestimos e Financiamentos;Saida;Parcelas e juros;0;0
+Janeiro;Investimentos;Saida;Reinvestimento no negocio;0;0
+Janeiro;Saldo do Mes;Resultado;Entradas menos saidas;0;0
+Janeiro;Saldo Acumulado;Resultado;Saldo do mes anterior + saldo do mes;0;0

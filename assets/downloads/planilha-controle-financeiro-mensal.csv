@@ -1,14 +1,11 @@
 Mes;Categoria;Tipo;Descricao;Valor Previsto;Valor Realizado
-Janeiro;Salario;Receita;;0;0
-Janeiro;Moradia;Despesa;Aluguel/Financiamento;0;0
-Janeiro;Moradia;Despesa;Condominio;0;0
-Janeiro;Moradia;Despesa;Agua/Luz/Gas;0;0
-Janeiro;Alimentacao;Despesa;Mercado;0;0
-Janeiro;Alimentacao;Despesa;Restaurantes;0;0
-Janeiro;Transporte;Despesa;Combustivel/Transporte publico;0;0
-Janeiro;Saude;Despesa;Plano de saude/Farmacia;0;0
-Janeiro;Lazer;Despesa;Lazer/Assinaturas;0;0
-Janeiro;Educacao;Despesa;Cursos/Mensalidades;0;0
-Janeiro;Dividas;Despesa;Cartao de credito/Emprestimos;0;0
-Janeiro;Reserva;Poupanca;Reserva de emergencia;0;0
-Janeiro;Investimentos;Poupanca;Aportes em investimentos;0;0
+Janeiro;Faturamento;Receita;Vendas/Servicos prestados;0;0
+Janeiro;Custos Fixos;Despesa;Aluguel/Condominio/Assinaturas;0;0
+Janeiro;Custos Variaveis;Despesa;Materia-prima/Insumos/Comissoes;0;0
+Janeiro;Folha de Pagamento;Despesa;Salarios e encargos;0;0
+Janeiro;Pro-labore;Despesa;Retirada dos socios;0;0
+Janeiro;Impostos e Taxas;Despesa;Tributos e taxas diversas;0;0
+Janeiro;Marketing;Despesa;Anuncios/Divulgacao;0;0
+Janeiro;Emprestimos e Financiamentos;Despesa;Parcelas e juros;0;0
+Janeiro;Reserva de Emergencia;Poupanca;Reserva do negocio;0;0
+Janeiro;Investimentos;Poupanca;Reinvestimento no negocio;0;0
