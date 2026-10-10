@@ -28,7 +28,7 @@ body {
 }
 
 h1, h2, h3 {
-  font-family: 'Cormorant Garamond', 'Inter', serif;
+  font-family: 'Fraunces', 'Inter', serif;
   font-weight: 600;
   color: var(--color-olive-dark);
   margin: 0 0 .5em;
@@ -108,11 +108,9 @@ img { max-width: 100%; display: block; }
   text-decoration: none;
   white-space: nowrap;
 }
-.logo-mark {
-  font-family: 'Cormorant Garamond', serif;
-  font-weight: 700;
-  font-size: 1.8rem;
-  color: var(--color-gold);
+.logo-mark-img {
+  height: 44px;
+  width: auto;
 }
 .logo-divider {
   width: 1px;
@@ -238,7 +236,7 @@ img { max-width: 100%; display: block; }
   text-align: center;
 }
 .hero-card-list li {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Fraunces', serif;
   font-size: 1.4rem;
   font-weight: 700;
   color: #fff;
@@ -272,37 +270,7 @@ img { max-width: 100%; display: block; }
   margin-bottom: 40px;
 }
 
-/* Perguntas / Callout */
-.perguntas-lista {
-  list-style: none;
-  padding: 0;
-  margin: 30px 0;
-  max-width: 720px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-.perguntas-lista li {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  font-size: 1.05rem;
-  color: var(--color-text);
-}
-.pergunta-icon {
-  flex-shrink: 0;
-  width: 30px;
-  height: 30px;
-  border: 1.5px solid var(--color-olive);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-olive);
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
+/* Callout */
 .callout {
   background: var(--color-bg-alt);
   border-left: 3px solid var(--color-gold);
@@ -369,7 +337,7 @@ img { max-width: 100%; display: block; }
   font-size: 1.4rem;
 }
 .etapa h4 {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Fraunces', serif;
   font-size: 1.15rem;
   color: var(--color-olive-dark);
   margin: 0 0 8px;
@@ -491,7 +459,7 @@ img { max-width: 100%; display: block; }
 .servicos-grid { margin-top: 50px; }
 
 .card-preco {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Fraunces', serif;
   font-weight: 700;
   font-size: 1.2rem;
   color: var(--color-gold);
@@ -551,7 +519,7 @@ img { max-width: 100%; display: block; }
   color: var(--color-beige);
 }
 .mini-kpi strong {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Fraunces', serif;
   font-size: 1.3rem;
   font-weight: 700;
   color: #fff;
@@ -626,7 +594,7 @@ img { max-width: 100%; display: block; }
   padding: 34px;
 }
 .portfolio-cta p {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Fraunces', serif;
   font-size: 1.3rem;
   color: var(--color-olive-dark);
   margin-bottom: 16px;
