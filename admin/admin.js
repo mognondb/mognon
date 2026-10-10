@@ -10,12 +10,12 @@
 
   // Credenciais ficam só na memória da aba (sessionStorage): somem ao fechar a
   // aba/navegador. O servidor (Cloudflare Worker) é quem de fato valida usuário
-  // e senha e guarda o token do GitHub — nada disso fica no código deste site.
+  // e senha — nada disso fica no código deste site.
   let authHeader = sessionStorage.getItem('cm_admin_auth') || '';
 
   const state = {
-    infoprodutos: { items: [], sha: null, dirty: false, editId: null },
-    dashboards: { items: [], sha: null, dirty: false, editId: null },
+    infoprodutos: { items: [], dirty: false, editId: null },
+    dashboards: { items: [], dirty: false, editId: null },
   };
 
   // ---------- Utilidades ----------
@@ -55,20 +55,20 @@
     const res = await fetch(`${config.apiUrl}/api/file?path=${tipo}`, {
       headers: { Authorization: authHeader },
     });
-    const body = await res.json().catch(() => ({}));
+    const body = await res.json().catch(() => ([]));
     if (!res.ok) throw new Error(body.message || `Erro ao carregar ${tipo} (HTTP ${res.status})`);
-    return body; // { json, sha }
+    return body; // array de itens
   }
 
-  async function apiPutFile(tipo, dados, sha) {
+  async function apiPutFile(tipo, itens) {
     const res = await fetch(`${config.apiUrl}/api/file?path=${tipo}`, {
       method: 'PUT',
       headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ data: dados, sha }),
+      body: JSON.stringify(itens),
     });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.message || `Erro ao salvar ${tipo} (HTTP ${res.status})`);
-    return body; // { sha }
+    return body;
   }
 
   // ---------- Login ----------
@@ -112,7 +112,7 @@
     const tentativaAuth = `Basic ${btoa(`${userInput.value.trim()}:${passInput.value}`)}`;
 
     try {
-      const res = await fetch(`${config.apiUrl}/api/file?path=infoprodutos`, {
+      const res = await fetch(`${config.apiUrl}/api/login`, {
         headers: { Authorization: tentativaAuth },
       });
 
@@ -161,7 +161,7 @@
 
   // Se já existe uma sessão ativa nesta aba (ex: recarregou a página), reentra direto
   if (authHeader && config.apiUrl) {
-    fetch(`${config.apiUrl}/api/file?path=infoprodutos`, { headers: { Authorization: authHeader } })
+    fetch(`${config.apiUrl}/api/login`, { headers: { Authorization: authHeader } })
       .then((res) => {
         if (res.ok) {
           loginScreen.hidden = true;
@@ -198,9 +198,7 @@
     feedback.textContent = '';
     feedback.className = 'admin-feedback';
     try {
-      const { json, sha } = await apiGetFile(tipo);
-      state[tipo].items = json;
-      state[tipo].sha = sha;
+      state[tipo].items = await apiGetFile(tipo);
       marcarDirty(tipo, false);
       renderLista(tipo);
     } catch (err) {
@@ -290,13 +288,12 @@
     feedback.textContent = 'Salvando...';
     feedback.className = 'admin-feedback';
     try {
-      const resultado = await apiPutFile(tipo, state[tipo].items, state[tipo].sha);
-      state[tipo].sha = resultado.sha;
+      await apiPutFile(tipo, state[tipo].items);
       marcarDirty(tipo, false);
-      feedback.textContent = 'Alterações salvas! O site será atualizado em poucos minutos.';
+      feedback.textContent = 'Alterações salvas! Já estão no ar.';
       feedback.className = 'admin-feedback success';
     } catch (err) {
-      feedback.textContent = err.message + (err.message.includes('409') ? ' Clique em Recarregar e tente de novo.' : '');
+      feedback.textContent = err.message;
       feedback.className = 'admin-feedback error';
     }
   }

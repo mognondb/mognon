@@ -1,30 +1,114 @@
 /**
  * Servidor (Cloudflare Worker) do painel administrativo da CM Soluções Financeiras.
  *
- * Guarda o usuário/senha do admin e o token do GitHub como segredos do lado do
- * servidor (nunca expostos ao navegador) e serve de ponte entre o painel
- * (admin/index.html) e a API do GitHub, para ler/gravar:
- *   - assets/data/infoprodutos.json
- *   - assets/data/dashboards.json
+ * Guarda o usuário/senha do admin como segredos do servidor (nunca expostos ao
+ * navegador) e guarda os dados de infoprodutos/dashboards num banco de dados
+ * Cloudflare KV (sem precisar de token do GitHub nem de nenhuma outra conta).
  *
- * Deploy: cole este arquivo no Cloudflare Workers (dash.cloudflare.com) e
- * configure as variáveis de ambiente (como "Secret") abaixo. Veja o passo a
- * passo completo em admin/README-servidor.md.
+ * Deploy: cole este arquivo no Cloudflare Workers (dash.cloudflare.com), crie um
+ * KV namespace e vincule-o à variável CM_DATA, e configure ADMIN_USER/ADMIN_PASS
+ * como secrets. Veja o passo a passo completo em admin/README-servidor.md.
  *
- * Variáveis de ambiente esperadas (Settings → Variables and Secrets):
- *   ADMIN_USER   usuário de login do painel
- *   ADMIN_PASS   senha de login do painel
- *   GH_TOKEN     fine-grained personal access token do GitHub (Contents: Read and write,
- *                restrito a este repositório)
- *   GH_OWNER     dono do repositório (ex: mognondb)
- *   GH_REPO      nome do repositório (ex: mognon)
- *   GH_BRANCH    branch publicada no GitHub Pages (ex: master)
- *   ALLOWED_ORIGIN  origem do site publicado (ex: https://mognondb.github.io), usada no CORS
+ * Bindings/variáveis esperadas (Settings → Variables and Secrets / Bindings):
+ *   CM_DATA      KV namespace (binding) onde os dados ficam guardados
+ *   ADMIN_USER   usuário de login do painel (secret)
+ *   ADMIN_PASS   senha de login do painel (secret)
+ *   ALLOWED_ORIGIN  (opcional) origem do site publicado, usada no CORS. Padrão: "*"
  */
 
-const ARQUIVOS = {
-  infoprodutos: 'assets/data/infoprodutos.json',
-  dashboards: 'assets/data/dashboards.json',
+// Conteúdo inicial: usado enquanto o KV ainda não tem nada salvo, para o site
+// já funcionar normalmente antes do primeiro cadastro pelo painel.
+const PADRAO = {
+  infoprodutos: [
+    {
+      id: 'controle-financeiro-mensal',
+      nome: 'Planilha de Controle Financeiro Mensal',
+      descricao: 'Organize as receitas e despesas da empresa mês a mês e visualize para onde o dinheiro está indo.',
+      icone: '📊',
+      tipo: 'gratis',
+      precoLabel: 'Grátis',
+      link: 'assets/downloads/planilha-controle-financeiro-mensal.csv',
+      ativo: true,
+    },
+    {
+      id: 'fluxo-caixa-empresarial',
+      nome: 'Planilha de Fluxo de Caixa Empresarial',
+      descricao: 'Modelo simples para projetar entradas, saídas e saldo dos próximos meses do seu negócio.',
+      icone: '🧾',
+      tipo: 'gratis',
+      precoLabel: 'Grátis',
+      link: 'assets/downloads/planilha-fluxo-caixa-empresarial.csv',
+      ativo: true,
+    },
+    {
+      id: 'guia-organizacao-financeira',
+      nome: 'E-book: Guia de Organização Financeira para Empresas',
+      descricao: 'Um passo a passo completo para estruturar o financeiro do zero, com exercícios práticos.',
+      icone: '📘',
+      tipo: 'hotmart',
+      precoLabel: 'R$ 47',
+      link: 'https://pay.hotmart.com/SEU-LINK-AQUI',
+      ativo: true,
+    },
+    {
+      id: 'indicadores-financeiros-gestores',
+      nome: 'E-book: Indicadores Financeiros para Gestores',
+      descricao: 'Os principais indicadores que todo gestor deveria acompanhar para decidir com mais segurança.',
+      icone: '🧠',
+      tipo: 'hotmart',
+      precoLabel: 'R$ 39',
+      link: 'https://pay.hotmart.com/SEU-LINK-AQUI',
+      ativo: true,
+    },
+    {
+      id: 'curso-fluxo-caixa-gestao',
+      nome: 'Curso: Fluxo de Caixa e Gestão Financeira na Prática',
+      descricao: 'Curso online para estruturar e acompanhar o financeiro da sua empresa, do zero até a rotina de gestão.',
+      icone: '🎥',
+      tipo: 'hotmart',
+      precoLabel: 'R$ 197',
+      link: 'https://pay.hotmart.com/SEU-LINK-AQUI',
+      ativo: true,
+    },
+  ],
+  dashboards: [
+    {
+      id: 'fluxo-de-caixa',
+      titulo: 'Fluxo de Caixa',
+      descricao: 'Entradas, saídas e saldo projetado mês a mês, com alertas de fluxo negativo.',
+      preview: 'barras',
+      kpis: [{ valor: 'R$ 128k', label: 'Receita' }, { valor: '32%', label: 'Margem' }],
+      barras: [35, 55, 45, 70, 60, 85],
+      ativo: true,
+    },
+    {
+      id: 'despesas-por-categoria',
+      titulo: 'Despesas por Categoria',
+      descricao: 'Distribuição de gastos fixos, variáveis e extras, com comparação mensal.',
+      preview: 'donut',
+      donut: { p1: 41, p2: 68 },
+      legendas: ['Fixos', 'Variáveis', 'Outros'],
+      ativo: true,
+    },
+    {
+      id: 'indicadores-investimentos',
+      titulo: 'Indicadores de Investimentos',
+      descricao: 'Evolução da carteira, rentabilidade e diversificação por classe de ativo.',
+      preview: 'barras',
+      kpis: [{ valor: '18,3%', label: 'Rentab.' }, { valor: 'R$ 42k', label: 'Aportes' }],
+      barras: [25, 40, 38, 58, 72, 90],
+      ativo: true,
+    },
+    {
+      id: 'indicadores-comerciais',
+      titulo: 'Indicadores Comerciais',
+      descricao: 'Metas de vendas, ticket médio e desempenho por período ou equipe.',
+      preview: 'donut',
+      donut: { p1: 55, p2: 80 },
+      legendas: ['Meta atingida', 'Em andamento', 'Não iniciado'],
+      ativo: true,
+    },
+  ],
 };
 
 function corsHeaders(env) {
@@ -58,54 +142,6 @@ function autenticado(request, env) {
   return usuario === env.ADMIN_USER && senha === env.ADMIN_PASS;
 }
 
-function toBase64Utf8(str) {
-  const bytes = new TextEncoder().encode(str);
-  let binary = '';
-  bytes.forEach((b) => { binary += String.fromCharCode(b); });
-  return btoa(binary);
-}
-
-function fromBase64Utf8(b64) {
-  const binary = atob((b64 || '').replace(/\n/g, ''));
-  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
-  return new TextDecoder().decode(bytes);
-}
-
-async function ghGetFile(env, path) {
-  const url = `https://api.github.com/repos/${env.GH_OWNER}/${env.GH_REPO}/contents/${path}?ref=${encodeURIComponent(env.GH_BRANCH)}`;
-  const res = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${env.GH_TOKEN}`,
-      Accept: 'application/vnd.github+json',
-      'User-Agent': 'cm-admin-worker',
-    },
-  });
-  const body = await res.json();
-  if (!res.ok) throw new Error(body.message || `Erro ao ler ${path} (HTTP ${res.status})`);
-  return { json: JSON.parse(fromBase64Utf8(body.content)), sha: body.sha };
-}
-
-async function ghPutFile(env, path, dados, sha) {
-  const url = `https://api.github.com/repos/${env.GH_OWNER}/${env.GH_REPO}/contents/${path}`;
-  const res = await fetch(url, {
-    method: 'PUT',
-    headers: {
-      Authorization: `Bearer ${env.GH_TOKEN}`,
-      Accept: 'application/vnd.github+json',
-      'User-Agent': 'cm-admin-worker',
-    },
-    body: JSON.stringify({
-      message: 'Atualiza dados via painel administrativo',
-      content: toBase64Utf8(JSON.stringify(dados, null, 2) + '\n'),
-      sha,
-      branch: env.GH_BRANCH,
-    }),
-  });
-  const body = await res.json();
-  if (!res.ok) throw new Error(body.message || `Erro ao salvar ${path} (HTTP ${res.status})`);
-  return body;
-}
-
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -114,38 +150,46 @@ export default {
       return new Response(null, { headers: corsHeaders(env) });
     }
 
+    // Usado só pela tela de login do painel para validar usuário/senha.
+    if (url.pathname === '/api/login') {
+      return autenticado(request, env)
+        ? jsonResponse({ ok: true }, 200, env)
+        : jsonResponse({ message: 'Usuário ou senha inválidos' }, 401, env);
+    }
+
     if (url.pathname !== '/api/file') {
       return jsonResponse({ message: 'Não encontrado' }, 404, env);
     }
 
-    if (!autenticado(request, env)) {
-      return jsonResponse({ message: 'Usuário ou senha inválidos' }, 401, env);
-    }
-
     const tipo = url.searchParams.get('path');
-    const caminhoReal = ARQUIVOS[tipo];
-    if (!caminhoReal) {
+    if (tipo !== 'infoprodutos' && tipo !== 'dashboards') {
       return jsonResponse({ message: 'Parâmetro "path" inválido' }, 400, env);
     }
 
-    try {
-      if (request.method === 'GET') {
-        const { json, sha } = await ghGetFile(env, caminhoReal);
-        return jsonResponse({ json, sha }, 200, env);
-      }
-
-      if (request.method === 'PUT') {
-        const payload = await request.json();
-        if (!Array.isArray(payload.data) || !payload.sha) {
-          return jsonResponse({ message: 'Corpo inválido: esperado { data, sha }' }, 400, env);
-        }
-        const resultado = await ghPutFile(env, caminhoReal, payload.data, payload.sha);
-        return jsonResponse({ sha: resultado.content.sha }, 200, env);
-      }
-
-      return jsonResponse({ message: 'Método não suportado' }, 405, env);
-    } catch (err) {
-      return jsonResponse({ message: err.message || 'Erro interno' }, 500, env);
+    // Leitura é pública: é o que o site publicado usa para montar as seções.
+    if (request.method === 'GET') {
+      const salvo = await env.CM_DATA.get(tipo, 'json');
+      return jsonResponse(salvo ?? PADRAO[tipo], 200, env);
     }
+
+    // Gravação exige usuário/senha.
+    if (request.method === 'PUT') {
+      if (!autenticado(request, env)) {
+        return jsonResponse({ message: 'Usuário ou senha inválidos' }, 401, env);
+      }
+      let payload;
+      try {
+        payload = await request.json();
+      } catch {
+        return jsonResponse({ message: 'JSON inválido' }, 400, env);
+      }
+      if (!Array.isArray(payload)) {
+        return jsonResponse({ message: 'Corpo inválido: esperada uma lista de itens' }, 400, env);
+      }
+      await env.CM_DATA.put(tipo, JSON.stringify(payload));
+      return jsonResponse({ ok: true }, 200, env);
+    }
+
+    return jsonResponse({ message: 'Método não suportado' }, 405, env);
   },
 };

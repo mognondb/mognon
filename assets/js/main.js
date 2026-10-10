@@ -50,14 +50,34 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-// Infoprodutos: carregados de assets/data/infoprodutos.json (cadastrados pelo painel /admin/)
+// Endereço do servidor (Cloudflare Worker) do painel /admin/. Quando configurado,
+// o site busca os dados mais recentes ali; se não estiver configurado (ou a
+// chamada falhar), cai de volta para os arquivos estáticos em assets/data/.
+// Veja admin/README-servidor.md.
+const ADMIN_API_URL = '';
+
+async function buscarDados(tipo, caminhoLocal) {
+  if (ADMIN_API_URL) {
+    try {
+      const res = await fetch(`${ADMIN_API_URL}/api/file?path=${tipo}`, { cache: 'no-store' });
+      if (res.ok) return res.json();
+    } catch {
+      // segue para o fallback local
+    }
+  }
+  const res = await fetch(caminhoLocal, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`Falha ao buscar ${caminhoLocal}`);
+  return res.json();
+}
+
+// Infoprodutos: carregados do servidor (ou de assets/data/infoprodutos.json como
+// fallback), cadastrados pelo painel /admin/
 async function carregarInfoprodutos() {
   const grid = document.getElementById('infoprodutosGrid');
   if (!grid) return;
   try {
-    const res = await fetch('assets/data/infoprodutos.json', { cache: 'no-store' });
-    if (!res.ok) throw new Error('Falha ao buscar infoprodutos.json');
-    const itens = (await res.json()).filter((item) => item.ativo !== false);
+    const dados = await buscarDados('infoprodutos', 'assets/data/infoprodutos.json');
+    const itens = dados.filter((item) => item.ativo !== false);
 
     if (itens.length === 0) {
       grid.innerHTML = '<p class="loading-placeholder">Nenhum produto disponível no momento.</p>';
@@ -86,14 +106,14 @@ async function carregarInfoprodutos() {
   }
 }
 
-// Portfólio de dashboards: carregado de assets/data/dashboards.json (cadastrados pelo painel /admin/)
+// Portfólio de dashboards: carregado do servidor (ou de assets/data/dashboards.json
+// como fallback), cadastrados pelo painel /admin/
 async function carregarDashboards() {
   const grid = document.getElementById('portfolioGrid');
   if (!grid) return;
   try {
-    const res = await fetch('assets/data/dashboards.json', { cache: 'no-store' });
-    if (!res.ok) throw new Error('Falha ao buscar dashboards.json');
-    const itens = (await res.json()).filter((item) => item.ativo !== false);
+    const dados = await buscarDados('dashboards', 'assets/data/dashboards.json');
+    const itens = dados.filter((item) => item.ativo !== false);
 
     if (itens.length === 0) {
       grid.innerHTML = '<p class="loading-placeholder">Nenhum dashboard no portfólio ainda.</p>';

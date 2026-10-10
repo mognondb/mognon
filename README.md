@@ -25,8 +25,10 @@ legacy-jekyll-boilerplate/  Arquivos antigos do scaffold padrão do GitHub Pages
 1. **Hero** — apresentação rápida da CM.
 2. **Sobre** — quem é a CM e como ela trabalha.
 3. **Serviços** — os níveis de apoio (Implantação, Acompanhamento, Assistência, Gestão) e o Diagnóstico Financeiro gratuito.
-4. **Portfólio** — dashboards em Power BI, carregados de `assets/data/dashboards.json`.
-5. **Infoprodutos** — planilhas gratuitas e produtos pagos (Hotmart), carregados de `assets/data/infoprodutos.json`.
+4. **Portfólio** — dashboards em Power BI, carregados do servidor do painel (ou de
+   `assets/data/dashboards.json` como fallback).
+5. **Infoprodutos** — planilhas gratuitas e produtos pagos (Hotmart), carregados do
+   servidor do painel (ou de `assets/data/infoprodutos.json` como fallback).
 6. **Contato / Relatório** — formulário para o cliente interessado preencher.
 
 ## Painel administrativo (`/admin/`)
@@ -35,17 +37,18 @@ Página **escondida** (não aparece no menu, bloqueada em `robots.txt`) para cad
 infoprodutos e dashboards do portfólio **sem editar código**.
 
 - Acesse `seusite.com/admin/`
-- Login: **usuário e senha**, verificados por um servidor próprio (Cloudflare Worker,
-  gratuito) — veja **`admin/README-servidor.md`** para o passo a passo de publicá-lo
-  (uma vez só, leva uns 10 minutos).
-- O servidor guarda o usuário/senha e o token do GitHub como segredos — nenhum dos
-  dois fica no código do site. O navegador só envia usuário/senha a cada chamada; é o
-  servidor quem decide se autoriza e fala com a API do GitHub.
+- Login: **usuário e senha**, só isso — verificados por um servidor próprio
+  (Cloudflare Worker, gratuito, sem token de GitHub nem de nada) — veja
+  **`admin/README-servidor.md`** para o passo a passo de publicá-lo (uma vez só,
+  leva uns 5 minutos).
+- O servidor guarda o usuário/senha como segredo e os dados cadastrados num banco
+  de dados próprio do Cloudflare (KV) — nada disso fica no código do site. O
+  navegador só envia usuário/senha a cada chamada; é o servidor quem decide se
+  autoriza.
 - Depois de configurado, o navegador lembra o endereço do servidor; o login do dia a
   dia é só usuário e senha.
-- Cada "Salvar alterações" faz o servidor commitar direto nos arquivos
-  `assets/data/*.json` do branch configurado — o GitHub Pages republica o site
-  automaticamente em seguida.
+- Cada "Salvar alterações" grava direto no servidor — fica no ar na hora, sem
+  precisar de novo deploy do site.
 - **Infoprodutos grátis**: o campo "link" deve apontar para um arquivo já existente em
   `assets/downloads/`. Para adicionar um arquivo novo, é preciso subir ele no repositório
   (o painel ainda não faz upload de arquivo).
@@ -83,8 +86,13 @@ de `index.html` (atualmente com valores de exemplo).
 
 ### 4. Servidor do painel administrativo
 Siga `admin/README-servidor.md` para publicar o Cloudflare Worker que autentica o
-painel e fala com a API do GitHub. Sem isso, o painel fica no ar mas não consegue
-carregar nem salvar nada.
+painel e guarda os dados (gratuito, ~5 min, sem token nenhum). Sem isso, o painel
+fica no ar mas não consegue carregar nem salvar nada.
+
+### 5. Site público mostrar os dados em tempo real (opcional)
+Por padrão o site lê `assets/data/*.json` (arquivos fixos). Depois de publicar o
+servidor (item 4), me passe a URL dele que eu configuro `ADMIN_API_URL` em
+`assets/js/main.js` para o site buscar os dados mais recentes direto do servidor.
 
 ## Publicação
 
