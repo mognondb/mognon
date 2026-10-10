@@ -1,12 +1,13 @@
 (function () {
   'use strict';
 
-  const LS_API_URL = 'cm_admin_api_url';
   const TIPOS = ['infoprodutos', 'dashboards'];
 
-  let config = {
-    apiUrl: localStorage.getItem(LS_API_URL) || '',
-  };
+  // Endereço do servidor (Cloudflare Worker). Não é segredo — só a senha é —
+  // por isso fica fixo aqui em vez de pedir pra digitar a cada login.
+  const API_URL = 'https://bold-forest-84c8fff.mognon-db.workers.dev';
+
+  let config = { apiUrl: API_URL };
 
   // Credenciais ficam só na memória da aba (sessionStorage): somem ao fechar a
   // aba/navegador. O servidor (Cloudflare Worker) é quem de fato valida usuário
@@ -78,11 +79,8 @@
   const loginForm = document.getElementById('loginForm');
   const userInput = document.getElementById('userInput');
   const passInput = document.getElementById('passInput');
-  const apiUrlInput = document.getElementById('apiUrlInput');
   const loginFeedback = document.getElementById('loginFeedback');
   const btnEntrar = document.getElementById('btnEntrar');
-
-  apiUrlInput.value = config.apiUrl;
 
   let tentativasFalhas = 0;
   let bloqueadoAte = 0;
@@ -97,18 +95,10 @@
       return;
     }
 
-    const apiUrl = apiUrlInput.value.trim().replace(/\/+$/, '');
-    if (!apiUrl) {
-      loginFeedback.textContent = 'Configure o endereço do servidor em "Configurações do servidor" (veja admin/README-servidor.md).';
-      loginFeedback.className = 'admin-feedback error';
-      return;
-    }
-
     btnEntrar.disabled = true;
     loginFeedback.textContent = 'Verificando...';
     loginFeedback.className = 'admin-feedback';
 
-    config.apiUrl = apiUrl;
     const tentativaAuth = `Basic ${btoa(`${userInput.value.trim()}:${passInput.value}`)}`;
 
     try {
@@ -132,16 +122,19 @@
 
       authHeader = tentativaAuth;
       sessionStorage.setItem('cm_admin_auth', authHeader);
-      localStorage.setItem(LS_API_URL, config.apiUrl);
 
       tentativasFalhas = 0;
       loginScreen.hidden = true;
       painel.hidden = false;
       carregarTudo();
     } catch (err) {
-      loginFeedback.textContent = err.message.includes('fetch')
-        ? 'Não foi possível conectar ao servidor. Confira o endereço configurado.'
-        : err.message;
+      if (err instanceof TypeError) {
+        // fetch() falhou antes de receber qualquer resposta: rede, CORS, DNS, etc.
+        loginFeedback.textContent = `Não foi possível conectar ao servidor (${err.message}). Veja o console (F12) para mais detalhes.`;
+        console.error('Erro de rede ao conectar no servidor do painel:', err);
+      } else {
+        loginFeedback.textContent = err.message;
+      }
       loginFeedback.className = 'admin-feedback error';
     } finally {
       btnEntrar.disabled = false;

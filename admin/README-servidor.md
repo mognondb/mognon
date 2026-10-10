@@ -51,13 +51,10 @@ Acesse https://dash.cloudflare.com/sign-up e crie uma conta gratuita.
 No painel do Worker, copie a URL mostrada (algo como `https://cm-admin-api.SEUUSUARIO.workers.dev`).
 
 ### 8. Configurar no painel
-1. Acesse `seusite.com/admin/`
-2. Abra **"Configurações do servidor"**
-3. Cole a URL do passo 7 em "Endereço do servidor"
-4. Faça login com o usuário e senha configurados no passo 6
-
-Pronto — a partir daqui, o navegador guarda o endereço do servidor, e cada login
-só pede usuário e senha.
+O endereço do Worker fica fixo em `admin/admin.js` (constante `API_URL`) — não
+precisa colar em lugar nenhum na tela de login. Depois de publicar o Worker, passe
+a URL do passo 7 (ou me avise) para atualizar essa constante. A partir daí, acesse
+`seusite.com/admin/` e faça login só com usuário e senha.
 
 ### 9. (Opcional) O site público mostrar os dados em tempo real
 Hoje o site lê os infoprodutos/dashboards dos arquivos

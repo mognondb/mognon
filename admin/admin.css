@@ -55,28 +55,6 @@
 .admin-feedback.success { color: var(--color-olive); }
 .admin-feedback.error { color: #b3261e; }
 
-.admin-config, .admin-help {
-  margin-top: 20px;
-  font-size: 0.85rem;
-}
-.admin-config summary, .admin-help summary {
-  cursor: pointer;
-  color: var(--color-olive);
-  font-weight: 600;
-}
-.admin-help ol {
-  margin: 12px 0 0;
-  padding-left: 20px;
-  color: var(--color-text-light);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.admin-help code {
-  background: var(--color-bg-alt);
-  padding: 1px 6px;
-  border-radius: 4px;
-}
 
 /* Painel */
 .admin-header {

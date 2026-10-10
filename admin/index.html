@@ -29,25 +29,7 @@
 
       <button type="submit" class="btn btn-primary btn-block" id="btnEntrar">Entrar</button>
       <p class="admin-feedback" id="loginFeedback" role="status"></p>
-
-      <details class="admin-config">
-        <summary>Configurações do servidor (só na primeira vez)</summary>
-        <label for="apiUrlInput">Endereço do servidor (Cloudflare Worker)</label>
-        <input type="text" id="apiUrlInput" placeholder="https://cm-admin-api.SEUUSUARIO.workers.dev">
-      </details>
     </form>
-
-    <details class="admin-help">
-      <summary>Ainda não configurei o servidor — como faço?</summary>
-      <p>
-        O usuário e senha são verificados por um pequeno servidor (Cloudflare Worker),
-        que guarda essas credenciais e os dados cadastrados de forma segura — nada fica
-        exposto no código do site. Siga o passo a passo em
-        <code>admin/README-servidor.md</code> no repositório para publicar o servidor
-        (leva uns 5 minutos, é gratuito e não precisa de token nenhum) e depois cole o
-        endereço dele aqui em cima.
-      </p>
-    </details>
   </div>
 </div>
 
