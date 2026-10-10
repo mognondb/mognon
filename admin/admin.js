@@ -1,0 +1,469 @@
+(function () {
+  'use strict';
+
+  const LS_TOKEN = 'cm_admin_token';
+  const LS_OWNER = 'cm_admin_owner';
+  const LS_REPO = 'cm_admin_repo';
+  const LS_BRANCH = 'cm_admin_branch';
+
+  const PATH_INFOPRODUTOS = 'assets/data/infoprodutos.json';
+  const PATH_DASHBOARDS = 'assets/data/dashboards.json';
+
+  let config = {
+    token: localStorage.getItem(LS_TOKEN) || '',
+    owner: localStorage.getItem(LS_OWNER) || 'mognondb',
+    repo: localStorage.getItem(LS_REPO) || 'mognon',
+    branch: localStorage.getItem(LS_BRANCH) || 'master',
+  };
+
+  const state = {
+    infoprodutos: { items: [], sha: null, dirty: false, editId: null },
+    dashboards: { items: [], sha: null, dirty: false, editId: null },
+  };
+
+  // ---------- Utilidades ----------
+
+  function slugify(str) {
+    return (str || '')
+      .toString()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+  }
+
+  function gerarId(base, existentes) {
+    const raiz = slugify(base) || 'item';
+    let candidato = raiz;
+    let i = 1;
+    while (existentes.includes(candidato)) {
+      candidato = `${raiz}-${i++}`;
+    }
+    return candidato;
+  }
+
+  function toBase64(str) {
+    const bytes = new TextEncoder().encode(str);
+    let binary = '';
+    bytes.forEach((b) => { binary += String.fromCharCode(b); });
+    return btoa(binary);
+  }
+
+  function fromBase64(b64) {
+    const binary = atob((b64 || '').replace(/\n/g, ''));
+    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str ?? '';
+    return div.innerHTML;
+  }
+
+  function apiUrl(path) {
+    return `https://api.github.com/repos/${config.owner}/${config.repo}/contents/${path}`;
+  }
+
+  async function ghGetFile(path) {
+    const res = await fetch(`${apiUrl(path)}?ref=${encodeURIComponent(config.branch)}`, {
+      headers: {
+        Authorization: `Bearer ${config.token}`,
+        Accept: 'application/vnd.github+json',
+      },
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.message || `Erro ao carregar ${path} (HTTP ${res.status})`);
+    }
+    const data = await res.json();
+    const conteudo = fromBase64(data.content);
+    return { json: JSON.parse(conteudo), sha: data.sha };
+  }
+
+  async function ghPutFile(path, jsonObj, sha, mensagem) {
+    const conteudo = toBase64(JSON.stringify(jsonObj, null, 2) + '\n');
+    const res = await fetch(apiUrl(path), {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${config.token}`,
+        Accept: 'application/vnd.github+json',
+      },
+      body: JSON.stringify({
+        message: mensagem,
+        content: conteudo,
+        sha,
+        branch: config.branch,
+      }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const base = body.message || 'Erro ao salvar';
+      throw new Error(`${base} (HTTP ${res.status})`);
+    }
+    return body;
+  }
+
+  // ---------- Login ----------
+
+  const loginScreen = document.getElementById('loginScreen');
+  const painel = document.getElementById('painel');
+  const tokenInput = document.getElementById('tokenInput');
+  const ownerInput = document.getElementById('ownerInput');
+  const repoInput = document.getElementById('repoInput');
+  const branchInput = document.getElementById('branchInput');
+  const loginFeedback = document.getElementById('loginFeedback');
+
+  ownerInput.value = config.owner;
+  repoInput.value = config.repo;
+  branchInput.value = config.branch;
+
+  async function tentarEntrar() {
+    const token = tokenInput.value.trim();
+    if (!token) {
+      loginFeedback.textContent = 'Cole seu token de acesso do GitHub.';
+      loginFeedback.className = 'admin-feedback error';
+      return;
+    }
+
+    config.token = token;
+    config.owner = ownerInput.value.trim() || 'mognondb';
+    config.repo = repoInput.value.trim() || 'mognon';
+    config.branch = branchInput.value.trim() || 'master';
+
+    loginFeedback.textContent = 'Verificando acesso...';
+    loginFeedback.className = 'admin-feedback';
+
+    try {
+      const res = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}`, {
+        headers: { Authorization: `Bearer ${config.token}`, Accept: 'application/vnd.github+json' },
+      });
+      if (!res.ok) {
+        throw new Error(res.status === 401 || res.status === 403
+          ? 'Token inválido ou sem permissão para este repositório.'
+          : `Não foi possível acessar o repositório (HTTP ${res.status}).`);
+      }
+
+      localStorage.setItem(LS_TOKEN, config.token);
+      localStorage.setItem(LS_OWNER, config.owner);
+      localStorage.setItem(LS_REPO, config.repo);
+      localStorage.setItem(LS_BRANCH, config.branch);
+
+      loginScreen.hidden = true;
+      painel.hidden = false;
+      carregarTudo();
+    } catch (err) {
+      loginFeedback.textContent = err.message;
+      loginFeedback.className = 'admin-feedback error';
+    }
+  }
+
+  document.getElementById('btnEntrar').addEventListener('click', tentarEntrar);
+  tokenInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') tentarEntrar(); });
+
+  document.getElementById('btnSair').addEventListener('click', () => {
+    localStorage.removeItem(LS_TOKEN);
+    config.token = '';
+    painel.hidden = true;
+    loginScreen.hidden = false;
+    tokenInput.value = '';
+    tokenInput.focus();
+  });
+
+  // Se já existe token salvo, tenta entrar direto
+  if (config.token) {
+    tokenInput.value = config.token;
+    tentarEntrar();
+  }
+
+  // ---------- Abas ----------
+
+  document.querySelectorAll('.admin-tab').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.admin-tab').forEach((b) => b.classList.remove('active'));
+      document.querySelectorAll('.admin-tab-panel').forEach((p) => { p.hidden = true; });
+      btn.classList.add('active');
+      document.getElementById(`tab-${btn.dataset.tab}`).hidden = false;
+    });
+  });
+
+  function carregarTudo() {
+    carregarLista('infoprodutos', PATH_INFOPRODUTOS);
+    carregarLista('dashboards', PATH_DASHBOARDS);
+  }
+
+  // ---------- Carregar / Renderizar listas ----------
+
+  async function carregarLista(tipo, path) {
+    const lista = document.getElementById(`lista${capitalize(tipo)}`);
+    const feedback = document.getElementById(`feedback${capitalize(tipo)}`);
+    lista.innerHTML = '<p class="loading-placeholder">Carregando...</p>';
+    feedback.textContent = '';
+    feedback.className = 'admin-feedback';
+    try {
+      const { json, sha } = await ghGetFile(path);
+      state[tipo].items = json;
+      state[tipo].sha = sha;
+      state[tipo].dirty = false;
+      marcarDirty(tipo, false);
+      renderLista(tipo);
+    } catch (err) {
+      lista.innerHTML = '';
+      feedback.textContent = err.message;
+      feedback.className = 'admin-feedback error';
+    }
+  }
+
+  function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+  function marcarDirty(tipo, valor) {
+    state[tipo].dirty = valor;
+    document.getElementById(`dirty${capitalize(tipo)}`).hidden = !valor;
+  }
+
+  function renderLista(tipo) {
+    const lista = document.getElementById(`lista${capitalize(tipo)}`);
+    const itens = state[tipo].items;
+    if (itens.length === 0) {
+      lista.innerHTML = '<p class="loading-placeholder">Nenhum item cadastrado ainda.</p>';
+      return;
+    }
+    lista.innerHTML = itens.map((item) => {
+      const ativo = item.ativo !== false;
+      if (tipo === 'infoprodutos') {
+        const tipoLabel = item.tipo === 'gratis' ? 'Grátis' : (item.precoLabel || 'Pago');
+        return `
+          <div class="admin-item ${ativo ? '' : 'inativo'}" data-id="${escapeHtml(item.id)}">
+            <div class="admin-item-icon">${escapeHtml(item.icone || '📦')}</div>
+            <div class="admin-item-info">
+              <h4>${escapeHtml(item.nome)}</h4>
+              <p>${escapeHtml(item.descricao)}</p>
+              <span class="admin-item-meta">${escapeHtml(tipoLabel)}${ativo ? '' : ' · inativo'}</span>
+            </div>
+            <div class="admin-item-actions">
+              <button class="btn btn-ghost btn-sm" data-acao="editar">Editar</button>
+              <button class="btn btn-outline btn-sm" data-acao="remover">Remover</button>
+            </div>
+          </div>`;
+      }
+      return `
+        <div class="admin-item ${ativo ? '' : 'inativo'}" data-id="${escapeHtml(item.id)}">
+          <div class="admin-item-icon">${item.preview === 'donut' ? '🍩' : '📊'}</div>
+          <div class="admin-item-info">
+            <h4>${escapeHtml(item.titulo)}</h4>
+            <p>${escapeHtml(item.descricao)}</p>
+            <span class="admin-item-meta">${item.preview === 'donut' ? 'Donut' : 'Barras'}${ativo ? '' : ' · inativo'}</span>
+          </div>
+          <div class="admin-item-actions">
+            <button class="btn btn-ghost btn-sm" data-acao="editar">Editar</button>
+            <button class="btn btn-outline btn-sm" data-acao="remover">Remover</button>
+          </div>
+        </div>`;
+    }).join('');
+
+    lista.querySelectorAll('.admin-item').forEach((el) => {
+      const id = el.dataset.id;
+      el.querySelector('[data-acao="editar"]').addEventListener('click', () => abrirModal(tipo, id));
+      el.querySelector('[data-acao="remover"]').addEventListener('click', () => removerItem(tipo, id));
+    });
+  }
+
+  function abrirModal(tipo, id) {
+    if (tipo === 'infoprodutos') abrirModalInfoproduto(id);
+    else abrirModalDashboard(id);
+  }
+
+  function removerItem(tipo, id) {
+    if (!confirm('Remover este item? Isso só é aplicado de verdade ao clicar em "Salvar alterações".')) return;
+    state[tipo].items = state[tipo].items.filter((i) => i.id !== id);
+    marcarDirty(tipo, true);
+    renderLista(tipo);
+  }
+
+  // ---------- Recarregar / Salvar ----------
+
+  document.getElementById('btnRecarregarInfoprodutos').addEventListener('click', () => {
+    if (state.infoprodutos.dirty && !confirm('Isso descarta suas alterações não salvas. Continuar?')) return;
+    carregarLista('infoprodutos', PATH_INFOPRODUTOS);
+  });
+  document.getElementById('btnRecarregarDashboards').addEventListener('click', () => {
+    if (state.dashboards.dirty && !confirm('Isso descarta suas alterações não salvas. Continuar?')) return;
+    carregarLista('dashboards', PATH_DASHBOARDS);
+  });
+
+  async function salvar(tipo, path) {
+    const feedback = document.getElementById(`feedback${capitalize(tipo)}`);
+    feedback.textContent = 'Salvando...';
+    feedback.className = 'admin-feedback';
+    try {
+      const resultado = await ghPutFile(
+        path,
+        state[tipo].items,
+        state[tipo].sha,
+        `Atualiza ${tipo} via painel administrativo`
+      );
+      state[tipo].sha = resultado.content.sha;
+      marcarDirty(tipo, false);
+      feedback.textContent = 'Alterações salvas! O site será atualizado em poucos minutos.';
+      feedback.className = 'admin-feedback success';
+    } catch (err) {
+      feedback.textContent = err.message + (err.message.includes('409') ? ' Clique em Recarregar e tente de novo.' : '');
+      feedback.className = 'admin-feedback error';
+    }
+  }
+
+  document.getElementById('btnSalvarInfoprodutos').addEventListener('click', () => salvar('infoprodutos', PATH_INFOPRODUTOS));
+  document.getElementById('btnSalvarDashboards').addEventListener('click', () => salvar('dashboards', PATH_DASHBOARDS));
+
+  // ---------- Modal Infoproduto ----------
+
+  const modalInfoproduto = document.getElementById('modalInfoproduto');
+  const formInfoproduto = document.getElementById('formInfoproduto');
+  const ipTipo = document.getElementById('ipTipo');
+  const labelIpLink = document.getElementById('labelIpLink');
+  const hintIpLink = document.getElementById('hintIpLink');
+  const campoPreco = document.getElementById('campoPreco');
+
+  function atualizarCamposInfoproduto() {
+    const gratis = ipTipo.value === 'gratis';
+    campoPreco.style.display = gratis ? 'none' : 'block';
+    document.getElementById('ipPreco').required = !gratis;
+    labelIpLink.textContent = gratis ? 'Caminho do arquivo *' : 'Link de checkout na Hotmart *';
+    document.getElementById('ipLink').placeholder = gratis
+      ? 'assets/downloads/minha-planilha.csv'
+      : 'https://pay.hotmart.com/XXXXXXX';
+    hintIpLink.style.display = gratis ? 'block' : 'none';
+  }
+  ipTipo.addEventListener('change', atualizarCamposInfoproduto);
+
+  function abrirModalInfoproduto(id) {
+    state.infoprodutos.editId = id || null;
+    const item = id ? state.infoprodutos.items.find((i) => i.id === id) : null;
+    document.getElementById('modalInfoprodutoTitulo').textContent = item ? 'Editar infoproduto' : 'Novo infoproduto';
+    document.getElementById('ipNome').value = item?.nome || '';
+    document.getElementById('ipDescricao').value = item?.descricao || '';
+    document.getElementById('ipIcone').value = item?.icone || '';
+    ipTipo.value = item?.tipo || 'gratis';
+    document.getElementById('ipPreco').value = item?.precoLabel || '';
+    document.getElementById('ipLink').value = item?.link || '';
+    document.getElementById('ipAtivo').checked = item ? item.ativo !== false : true;
+    atualizarCamposInfoproduto();
+    modalInfoproduto.hidden = false;
+  }
+
+  document.getElementById('btnNovoInfoproduto').addEventListener('click', () => abrirModalInfoproduto(null));
+  document.getElementById('btnCancelarInfoproduto').addEventListener('click', () => { modalInfoproduto.hidden = true; });
+
+  formInfoproduto.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const gratis = ipTipo.value === 'gratis';
+    const dados = {
+      nome: document.getElementById('ipNome').value.trim(),
+      descricao: document.getElementById('ipDescricao').value.trim(),
+      icone: document.getElementById('ipIcone').value.trim() || '📦',
+      tipo: ipTipo.value,
+      precoLabel: gratis ? 'Grátis' : document.getElementById('ipPreco').value.trim(),
+      link: document.getElementById('ipLink').value.trim(),
+      ativo: document.getElementById('ipAtivo').checked,
+    };
+
+    const itens = state.infoprodutos.items;
+    if (state.infoprodutos.editId) {
+      const idx = itens.findIndex((i) => i.id === state.infoprodutos.editId);
+      itens[idx] = { ...itens[idx], ...dados };
+    } else {
+      const id = gerarId(dados.nome, itens.map((i) => i.id));
+      itens.push({ id, ...dados });
+    }
+
+    marcarDirty('infoprodutos', true);
+    renderLista('infoprodutos');
+    modalInfoproduto.hidden = true;
+  });
+
+  // ---------- Modal Dashboard ----------
+
+  const modalDashboard = document.getElementById('modalDashboard');
+  const formDashboard = document.getElementById('formDashboard');
+  const dbPreview = document.getElementById('dbPreview');
+  const camposBarras = document.getElementById('camposBarras');
+  const camposDonut = document.getElementById('camposDonut');
+
+  function atualizarCamposDashboard() {
+    const barras = dbPreview.value === 'barras';
+    camposBarras.style.display = barras ? 'block' : 'none';
+    camposDonut.style.display = barras ? 'none' : 'block';
+  }
+  dbPreview.addEventListener('change', atualizarCamposDashboard);
+
+  function abrirModalDashboard(id) {
+    state.dashboards.editId = id || null;
+    const item = id ? state.dashboards.items.find((i) => i.id === id) : null;
+    document.getElementById('modalDashboardTitulo').textContent = item ? 'Editar dashboard' : 'Novo dashboard';
+    document.getElementById('dbTitulo').value = item?.titulo || '';
+    document.getElementById('dbDescricao').value = item?.descricao || '';
+    dbPreview.value = item?.preview || 'barras';
+    document.getElementById('dbKpi1Valor').value = item?.kpis?.[0]?.valor || '';
+    document.getElementById('dbKpi1Label').value = item?.kpis?.[0]?.label || '';
+    document.getElementById('dbKpi2Valor').value = item?.kpis?.[1]?.valor || '';
+    document.getElementById('dbKpi2Label').value = item?.kpis?.[1]?.label || '';
+    document.getElementById('dbBarras').value = (item?.barras || []).join(',');
+    document.getElementById('dbP1').value = item?.donut?.p1 ?? '';
+    document.getElementById('dbP2').value = item?.donut?.p2 ?? '';
+    document.getElementById('dbLegendas').value = (item?.legendas || []).join(',');
+    document.getElementById('dbAtivo').checked = item ? item.ativo !== false : true;
+    atualizarCamposDashboard();
+    modalDashboard.hidden = false;
+  }
+
+  document.getElementById('btnNovoDashboard').addEventListener('click', () => abrirModalDashboard(null));
+  document.getElementById('btnCancelarDashboard').addEventListener('click', () => { modalDashboard.hidden = true; });
+
+  formDashboard.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const barras = dbPreview.value === 'barras';
+
+    const dados = {
+      titulo: document.getElementById('dbTitulo').value.trim(),
+      descricao: document.getElementById('dbDescricao').value.trim(),
+      preview: dbPreview.value,
+      ativo: document.getElementById('dbAtivo').checked,
+    };
+
+    if (barras) {
+      dados.kpis = [
+        { valor: document.getElementById('dbKpi1Valor').value.trim(), label: document.getElementById('dbKpi1Label').value.trim() },
+        { valor: document.getElementById('dbKpi2Valor').value.trim(), label: document.getElementById('dbKpi2Label').value.trim() },
+      ];
+      dados.barras = document.getElementById('dbBarras').value
+        .split(',')
+        .map((v) => parseInt(v.trim(), 10))
+        .filter((v) => !Number.isNaN(v));
+    } else {
+      dados.donut = {
+        p1: parseInt(document.getElementById('dbP1').value, 10) || 0,
+        p2: parseInt(document.getElementById('dbP2').value, 10) || 0,
+      };
+      dados.legendas = document.getElementById('dbLegendas').value
+        .split(',')
+        .map((v) => v.trim())
+        .filter(Boolean);
+    }
+
+    const itens = state.dashboards.items;
+    if (state.dashboards.editId) {
+      const idx = itens.findIndex((i) => i.id === state.dashboards.editId);
+      itens[idx] = { ...itens[idx], ...dados };
+    } else {
+      const id = gerarId(dados.titulo, itens.map((i) => i.id));
+      itens.push({ id, ...dados });
+    }
+
+    marcarDirty('dashboards', true);
+    renderLista('dashboards');
+    modalDashboard.hidden = true;
+  });
+
+})();

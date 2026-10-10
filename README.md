@@ -7,8 +7,13 @@ Site estático (HTML/CSS/JS puro) para a CM Soluções Financeiras, publicado vi
 ```
 index.html                 Página única com todas as seções
 assets/css/style.css        Estilos
-assets/js/main.js           Menu mobile, scroll do formulário e envio do relatório
+assets/js/main.js           Menu mobile, formulário de contato e renderização dinâmica
+assets/data/infoprodutos.json  Dados dos infoprodutos (cadastrados via /admin/)
+assets/data/dashboards.json    Dados do portfólio de dashboards (cadastrados via /admin/)
 assets/downloads/           Planilhas gratuitas (CSV) disponíveis para download
+assets/img/                 Logo e imagens
+admin/                      Painel administrativo (escondido, não linkado no site)
+robots.txt                  Bloqueia indexação de /admin/ por buscadores
 legacy-jekyll-boilerplate/  Arquivos antigos do scaffold padrão do GitHub Pages (não usados)
 .nojekyll                   Desativa o processamento Jekyll para servir os arquivos como estão
 ```
@@ -16,10 +21,37 @@ legacy-jekyll-boilerplate/  Arquivos antigos do scaffold padrão do GitHub Pages
 ## Seções da página
 
 1. **Hero** — apresentação rápida da CM.
-2. **Sobre** — descrição da empresa.
-3. **Produtos** — cards com os serviços de consultoria (cada card leva ao formulário com a área de interesse pré-selecionada).
-4. **Infoprodutos** — cards de planilhas (download direto) e e-books/curso (compra).
-5. **Contato / Relatório** — formulário para o cliente interessado preencher.
+2. **Sobre** — quem é a CM e como ela trabalha.
+3. **Serviços** — os níveis de apoio (Implantação, Acompanhamento, Assistência, Gestão) e o Diagnóstico Financeiro gratuito.
+4. **Portfólio** — dashboards em Power BI, carregados de `assets/data/dashboards.json`.
+5. **Infoprodutos** — planilhas gratuitas e produtos pagos (Hotmart), carregados de `assets/data/infoprodutos.json`.
+6. **Contato / Relatório** — formulário para o cliente interessado preencher.
+
+## Painel administrativo (`/admin/`)
+
+Página **escondida** (não aparece no menu, bloqueada em `robots.txt`) para cadastrar
+infoprodutos e dashboards do portfólio **sem editar código**.
+
+- Acesse `seusite.com/admin/`
+- Faça login com um **token de acesso do GitHub** (fine-grained personal access token,
+  com permissão apenas de leitura/escrita de conteúdo neste repositório). O passo a
+  passo para gerar o token está dentro da própria tela de login.
+- O token fica salvo só no navegador de quem acessou (localStorage), nunca é enviado
+  para nenhum lugar além da API do GitHub.
+- Cada "Salvar alterações" cria um commit direto nos arquivos `assets/data/*.json` do
+  branch configurado (padrão: `master`) — o GitHub Pages republica o site automaticamente
+  em seguida.
+- **Infoprodutos grátis**: o campo "link" deve apontar para um arquivo já existente em
+  `assets/downloads/`. Para adicionar um arquivo novo, é preciso subir ele no repositório
+  (o painel ainda não faz upload de arquivo).
+- **Infoprodutos pagos**: o campo "link" é a URL de checkout da Hotmart
+  (ex: `https://pay.hotmart.com/XXXXXXX`).
+- **Dashboards**: cada item usa um mini-preview em CSS (barras ou donut) com dados
+  fictícios configuráveis — não são capturas de tela reais.
+
+> Importante: "escondida" aqui significa não-indexada e não-linkada, não autenticação
+> forte. Quem tiver a URL consegue ver a tela de login, mas só consegue salvar algo se
+> tiver um token válido com permissão no repositório.
 
 ## Configurações pendentes (precisam dos seus dados reais)
 
@@ -35,15 +67,19 @@ Para funcionar de verdade:
 
 Alternativas ao Formspree: Netlify Forms, Google Forms (embutido), ou um backend próprio.
 
-### 2. Botões "Comprar agora" dos infoprodutos pagos
-Os botões `.btn-comprar` em `index.html` estão com `href="#"` e hoje mostram um alerta
-explicativo (ver `assets/js/main.js`). Substitua o `href` de cada botão pelo link real
-de checkout da plataforma escolhida (Hotmart, Eduzz, Kiwify, Stripe Payment Link etc.)
-e remova o tratamento de clique correspondente em `main.js` quando isso for feito.
+### 2. Links reais da Hotmart
+Os infoprodutos pagos em `assets/data/infoprodutos.json` estão com
+`https://pay.hotmart.com/SEU-LINK-AQUI` como placeholder. Atualize pelo painel `/admin/`
+(ou editando o JSON diretamente) assim que os produtos existirem na Hotmart.
 
 ### 3. Dados de contato
 Atualize e-mail, WhatsApp, CNPJ e horário de atendimento no rodapé e na seção de contato
 de `index.html` (atualmente com valores de exemplo).
+
+### 4. Branch do GitHub Pages
+O painel `/admin/` assume por padrão que o GitHub Pages publica a branch `master`. Se o
+Pages deste repositório estiver configurado para outra branch, ajuste o campo "Branch
+publicado no GitHub Pages" na tela de login do admin (fica salvo no navegador).
 
 ## Publicação
 

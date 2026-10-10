@@ -1,0 +1,52 @@
+[
+  {
+    "id": "controle-financeiro-mensal",
+    "nome": "Planilha de Controle Financeiro Mensal",
+    "descricao": "Organize as receitas e despesas da empresa mês a mês e visualize para onde o dinheiro está indo.",
+    "icone": "📊",
+    "tipo": "gratis",
+    "precoLabel": "Grátis",
+    "link": "assets/downloads/planilha-controle-financeiro-mensal.csv",
+    "ativo": true
+  },
+  {
+    "id": "fluxo-caixa-empresarial",
+    "nome": "Planilha de Fluxo de Caixa Empresarial",
+    "descricao": "Modelo simples para projetar entradas, saídas e saldo dos próximos meses do seu negócio.",
+    "icone": "🧾",
+    "tipo": "gratis",
+    "precoLabel": "Grátis",
+    "link": "assets/downloads/planilha-fluxo-caixa-empresarial.csv",
+    "ativo": true
+  },
+  {
+    "id": "guia-organizacao-financeira",
+    "nome": "E-book: Guia de Organização Financeira para Empresas",
+    "descricao": "Um passo a passo completo para estruturar o financeiro do zero, com exercícios práticos.",
+    "icone": "📘",
+    "tipo": "hotmart",
+    "precoLabel": "R$ 47",
+    "link": "https://pay.hotmart.com/SEU-LINK-AQUI",
+    "ativo": true
+  },
+  {
+    "id": "indicadores-financeiros-gestores",
+    "nome": "E-book: Indicadores Financeiros para Gestores",
+    "descricao": "Os principais indicadores que todo gestor deveria acompanhar para decidir com mais segurança.",
+    "icone": "🧠",
+    "tipo": "hotmart",
+    "precoLabel": "R$ 39",
+    "link": "https://pay.hotmart.com/SEU-LINK-AQUI",
+    "ativo": true
+  },
+  {
+    "id": "curso-fluxo-caixa-gestao",
+    "nome": "Curso: Fluxo de Caixa e Gestão Financeira na Prática",
+    "descricao": "Curso online para estruturar e acompanhar o financeiro da sua empresa, do zero até a rotina de gestão.",
+    "icone": "🎥",
+    "tipo": "hotmart",
+    "precoLabel": "R$ 197",
+    "link": "https://pay.hotmart.com/SEU-LINK-AQUI",
+    "ativo": true
+  }
+]

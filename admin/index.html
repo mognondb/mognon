@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Painel Administrativo | CM Soluções Financeiras</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-body">
+
+<!-- LOGIN -->
+<div class="admin-login" id="loginScreen">
+  <div class="admin-login-box">
+    <img src="../assets/img/logo-cm.png" alt="CM Soluções Financeiras" class="admin-logo">
+    <h1>Painel Administrativo</h1>
+    <p class="admin-sub">Cadastre infoprodutos e dashboards do portfólio sem mexer em código.</p>
+
+    <label for="tokenInput">Token de acesso do GitHub</label>
+    <input type="password" id="tokenInput" placeholder="ghp_... ou github_pat_...">
+    <button class="btn btn-primary btn-block" id="btnEntrar">Entrar</button>
+    <p class="admin-feedback" id="loginFeedback" role="status"></p>
+
+    <details class="admin-config">
+      <summary>Configurações avançadas (opcional)</summary>
+      <label for="ownerInput">Dono do repositório</label>
+      <input type="text" id="ownerInput" value="mognondb">
+      <label for="repoInput">Nome do repositório</label>
+      <input type="text" id="repoInput" value="mognon">
+      <label for="branchInput">Branch publicado no GitHub Pages</label>
+      <input type="text" id="branchInput" value="master">
+    </details>
+
+    <details class="admin-help">
+      <summary>Como gerar meu token de acesso?</summary>
+      <ol>
+        <li>Acesse <strong>github.com → foto do perfil → Settings</strong></li>
+        <li>No menu lateral, vá em <strong>Developer settings → Personal access tokens → Fine-grained tokens</strong></li>
+        <li>Clique em <strong>Generate new token</strong></li>
+        <li>Em "Repository access", escolha <strong>Only select repositories</strong> e selecione este repositório (<code>mognon</code>)</li>
+        <li>Em "Permissions → Repository permissions", defina <strong>Contents: Read and write</strong></li>
+        <li>Gere o token e cole aqui em cima — ele fica salvo só neste navegador, nunca é enviado para mais ninguém além do GitHub</li>
+      </ol>
+    </details>
+  </div>
+</div>
+
+<!-- PAINEL -->
+<div class="admin-painel" id="painel" hidden>
+  <header class="admin-header">
+    <div class="admin-header-inner">
+      <img src="../assets/img/logo-cm.png" alt="CM" class="admin-logo-sm">
+      <h1>Painel Administrativo</h1>
+      <button class="btn btn-outline btn-sm" id="btnSair">Sair</button>
+    </div>
+  </header>
+
+  <nav class="admin-tabs">
+    <button class="admin-tab active" data-tab="infoprodutos">Infoprodutos</button>
+    <button class="admin-tab" data-tab="dashboards">Dashboards (Portfólio)</button>
+  </nav>
+
+  <main class="admin-main">
+
+    <!-- TAB INFOPRODUTOS -->
+    <section class="admin-tab-panel" id="tab-infoprodutos">
+      <div class="admin-toolbar">
+        <button class="btn btn-primary" id="btnNovoInfoproduto">+ Novo infoproduto</button>
+        <div class="admin-toolbar-actions">
+          <span class="admin-dirty" id="dirtyInfoprodutos" hidden>Alterações não salvas</span>
+          <button class="btn btn-ghost btn-sm" id="btnRecarregarInfoprodutos">Recarregar</button>
+          <button class="btn btn-primary btn-sm" id="btnSalvarInfoprodutos">Salvar alterações</button>
+        </div>
+      </div>
+      <p class="admin-feedback" id="feedbackInfoprodutos" role="status"></p>
+      <div class="admin-lista" id="listaInfoprodutos">
+        <p class="loading-placeholder">Carregando...</p>
+      </div>
+    </section>
+
+    <!-- TAB DASHBOARDS -->
+    <section class="admin-tab-panel" id="tab-dashboards" hidden>
+      <div class="admin-toolbar">
+        <button class="btn btn-primary" id="btnNovoDashboard">+ Novo dashboard</button>
+        <div class="admin-toolbar-actions">
+          <span class="admin-dirty" id="dirtyDashboards" hidden>Alterações não salvas</span>
+          <button class="btn btn-ghost btn-sm" id="btnRecarregarDashboards">Recarregar</button>
+          <button class="btn btn-primary btn-sm" id="btnSalvarDashboards">Salvar alterações</button>
+        </div>
+      </div>
+      <p class="admin-feedback" id="feedbackDashboards" role="status"></p>
+      <div class="admin-lista" id="listaDashboards">
+        <p class="loading-placeholder">Carregando...</p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- MODAL: FORM INFOPRODUTO -->
+<div class="admin-modal" id="modalInfoproduto" hidden>
+  <div class="admin-modal-box">
+    <h2 id="modalInfoprodutoTitulo">Novo infoproduto</h2>
+    <form id="formInfoproduto">
+      <label for="ipNome">Nome *</label>
+      <input type="text" id="ipNome" required placeholder="Ex: E-book Guia de Organização Financeira">
+
+      <label for="ipDescricao">Descrição *</label>
+      <textarea id="ipDescricao" rows="3" required placeholder="Descrição curta que aparece no card"></textarea>
+
+      <label for="ipIcone">Ícone (emoji)</label>
+      <input type="text" id="ipIcone" placeholder="📘" maxlength="4">
+
+      <label for="ipTipo">Tipo *</label>
+      <select id="ipTipo" required>
+        <option value="gratis">Grátis (download direto no site)</option>
+        <option value="hotmart">Pago (checkout na Hotmart)</option>
+      </select>
+
+      <div id="campoPreco">
+        <label for="ipPreco">Preço exibido *</label>
+        <input type="text" id="ipPreco" placeholder="Ex: R$ 47">
+      </div>
+
+      <label for="ipLink" id="labelIpLink">Link de checkout na Hotmart *</label>
+      <input type="text" id="ipLink" required placeholder="https://pay.hotmart.com/XXXXXXX">
+      <p class="admin-field-hint" id="hintIpLink">
+        Para itens grátis, use o caminho de um arquivo já existente em
+        <code>assets/downloads/</code> (ex: <code>assets/downloads/minha-planilha.csv</code>).
+        Para adicionar um arquivo novo, peça para subirmos ele no repositório.
+      </p>
+
+      <label class="checkbox-label">
+        <input type="checkbox" id="ipAtivo" checked>
+        Produto ativo (visível no site)
+      </label>
+
+      <div class="admin-modal-actions">
+        <button type="button" class="btn btn-outline" id="btnCancelarInfoproduto">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar item</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: FORM DASHBOARD -->
+<div class="admin-modal" id="modalDashboard" hidden>
+  <div class="admin-modal-box">
+    <h2 id="modalDashboardTitulo">Novo dashboard</h2>
+    <form id="formDashboard">
+      <label for="dbTitulo">Título *</label>
+      <input type="text" id="dbTitulo" required placeholder="Ex: Fluxo de Caixa">
+
+      <label for="dbDescricao">Descrição *</label>
+      <textarea id="dbDescricao" rows="3" required placeholder="Descrição curta que aparece no card"></textarea>
+
+      <label for="dbPreview">Estilo do preview *</label>
+      <select id="dbPreview" required>
+        <option value="barras">Gráfico de barras + 2 indicadores</option>
+        <option value="donut">Gráfico de rosca (donut) + legenda</option>
+      </select>
+
+      <div id="camposBarras">
+        <label for="dbKpi1Valor">Indicador 1 — valor</label>
+        <input type="text" id="dbKpi1Valor" placeholder="Ex: R$ 128k">
+        <label for="dbKpi1Label">Indicador 1 — legenda</label>
+        <input type="text" id="dbKpi1Label" placeholder="Ex: Receita">
+        <label for="dbKpi2Valor">Indicador 2 — valor</label>
+        <input type="text" id="dbKpi2Valor" placeholder="Ex: 32%">
+        <label for="dbKpi2Label">Indicador 2 — legenda</label>
+        <input type="text" id="dbKpi2Label" placeholder="Ex: Margem">
+        <label for="dbBarras">Valores das barras (0 a 100, separados por vírgula)</label>
+        <input type="text" id="dbBarras" placeholder="Ex: 35,55,45,70,60,85">
+      </div>
+
+      <div id="camposDonut">
+        <label for="dbP1">Ponto de corte 1 (%)</label>
+        <input type="number" id="dbP1" min="0" max="100" placeholder="Ex: 41">
+        <label for="dbP2">Ponto de corte 2 (%)</label>
+        <input type="number" id="dbP2" min="0" max="100" placeholder="Ex: 68">
+        <label for="dbLegendas">Legendas (3, separadas por vírgula)</label>
+        <input type="text" id="dbLegendas" placeholder="Ex: Fixos,Variáveis,Outros">
+      </div>
+
+      <label class="checkbox-label">
+        <input type="checkbox" id="dbAtivo" checked>
+        Dashboard ativo (visível no portfólio)
+      </label>
+
+      <div class="admin-modal-actions">
+        <button type="button" class="btn btn-outline" id="btnCancelarDashboard">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar item</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="admin.js"></script>
+</body>
+</html>

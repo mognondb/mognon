@@ -393,6 +393,14 @@ img { max-width: 100%; display: block; }
   color: var(--color-text-light);
 }
 
+.loading-placeholder {
+  grid-column: 1 / -1;
+  color: var(--color-text-light);
+  font-style: italic;
+  text-align: center;
+  padding: 20px 0;
+}
+
 /* Path cards (Serviços) */
 .path-grid {
   display: grid;

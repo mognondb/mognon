@@ -212,80 +212,8 @@
         personalizados em Power BI para dar clareza aos números do seu negócio.
       </p>
 
-      <div class="portfolio-grid">
-
-        <article class="portfolio-card">
-          <div class="portfolio-preview">
-            <div class="mini-kpis">
-              <span class="mini-kpi"><strong>R$ 128k</strong>Receita</span>
-              <span class="mini-kpi"><strong>32%</strong>Margem</span>
-            </div>
-            <div class="mini-chart">
-              <span style="--h:35%"></span>
-              <span style="--h:55%"></span>
-              <span style="--h:45%"></span>
-              <span style="--h:70%"></span>
-              <span style="--h:60%"></span>
-              <span style="--h:85%"></span>
-            </div>
-          </div>
-          <div class="portfolio-info">
-            <h3>Fluxo de Caixa</h3>
-            <p>Entradas, saídas e saldo projetado mês a mês, com alertas de fluxo negativo.</p>
-          </div>
-        </article>
-
-        <article class="portfolio-card">
-          <div class="portfolio-preview">
-            <div class="mini-donut" style="--p1:41%; --p2:68%;"></div>
-            <div class="mini-legend">
-              <span><i style="background:var(--color-olive)"></i>Fixos</span>
-              <span><i style="background:var(--color-gold)"></i>Variáveis</span>
-              <span><i style="background:var(--color-beige)"></i>Outros</span>
-            </div>
-          </div>
-          <div class="portfolio-info">
-            <h3>Despesas por Categoria</h3>
-            <p>Distribuição de gastos fixos, variáveis e extras, com comparação mensal.</p>
-          </div>
-        </article>
-
-        <article class="portfolio-card">
-          <div class="portfolio-preview">
-            <div class="mini-kpis">
-              <span class="mini-kpi"><strong>18,3%</strong>Rentab.</span>
-              <span class="mini-kpi"><strong>R$ 42k</strong>Aportes</span>
-            </div>
-            <div class="mini-chart">
-              <span style="--h:25%"></span>
-              <span style="--h:40%"></span>
-              <span style="--h:38%"></span>
-              <span style="--h:58%"></span>
-              <span style="--h:72%"></span>
-              <span style="--h:90%"></span>
-            </div>
-          </div>
-          <div class="portfolio-info">
-            <h3>Indicadores de Investimentos</h3>
-            <p>Evolução da carteira, rentabilidade e diversificação por classe de ativo.</p>
-          </div>
-        </article>
-
-        <article class="portfolio-card">
-          <div class="portfolio-preview">
-            <div class="mini-donut" style="--p1:55%; --p2:80%;"></div>
-            <div class="mini-legend">
-              <span><i style="background:var(--color-olive)"></i>Meta atingida</span>
-              <span><i style="background:var(--color-gold)"></i>Em andamento</span>
-              <span><i style="background:var(--color-beige)"></i>Não iniciado</span>
-            </div>
-          </div>
-          <div class="portfolio-info">
-            <h3>Indicadores Comerciais</h3>
-            <p>Metas de vendas, ticket médio e desempenho por período ou equipe.</p>
-          </div>
-        </article>
-
+      <div class="portfolio-grid" id="portfolioGrid">
+        <p class="loading-placeholder">Carregando portfólio...</p>
       </div>
 
       <div class="portfolio-cta">
@@ -304,55 +232,8 @@
         Materiais práticos para colocar o financeiro da sua empresa em ordem — gratuitos e pagos.
       </p>
 
-      <div class="cards-grid cards-grid-info">
-
-        <div class="card card-info">
-          <span class="badge badge-free">Grátis</span>
-          <div class="card-icon">📊</div>
-          <h3>Planilha de Controle Financeiro Mensal</h3>
-          <p>Organize as receitas e despesas da empresa mês a mês e visualize para onde
-             o dinheiro está indo.</p>
-          <a href="assets/downloads/planilha-controle-financeiro-mensal.csv"
-             class="btn btn-outline card-btn" download>Baixar grátis</a>
-        </div>
-
-        <div class="card card-info">
-          <span class="badge badge-free">Grátis</span>
-          <div class="card-icon">🧾</div>
-          <h3>Planilha de Fluxo de Caixa Empresarial</h3>
-          <p>Modelo simples para projetar entradas, saídas e saldo dos próximos meses do
-             seu negócio.</p>
-          <a href="assets/downloads/planilha-fluxo-caixa-empresarial.csv"
-             class="btn btn-outline card-btn" download>Baixar grátis</a>
-        </div>
-
-        <div class="card card-info">
-          <span class="badge badge-paid">R$ 47</span>
-          <div class="card-icon">📘</div>
-          <h3>E-book: Guia de Organização Financeira para Empresas</h3>
-          <p>Um passo a passo completo para estruturar o financeiro do zero, com
-             exercícios práticos.</p>
-          <a href="#" class="btn btn-primary card-btn btn-comprar" data-produto="E-book Guia de Organizacao Financeira para Empresas">Comprar agora</a>
-        </div>
-
-        <div class="card card-info">
-          <span class="badge badge-paid">R$ 39</span>
-          <div class="card-icon">🧠</div>
-          <h3>E-book: Indicadores Financeiros para Gestores</h3>
-          <p>Os principais indicadores que todo gestor deveria acompanhar para decidir
-             com mais segurança.</p>
-          <a href="#" class="btn btn-primary card-btn btn-comprar" data-produto="E-book Indicadores Financeiros para Gestores">Comprar agora</a>
-        </div>
-
-        <div class="card card-info">
-          <span class="badge badge-paid">R$ 197</span>
-          <div class="card-icon">🎥</div>
-          <h3>Curso: Fluxo de Caixa e Gestão Financeira na Prática</h3>
-          <p>Curso online para estruturar e acompanhar o financeiro da sua empresa,
-             do zero até a rotina de gestão.</p>
-          <a href="#" class="btn btn-primary card-btn btn-comprar" data-produto="Curso Fluxo de Caixa e Gestao Financeira na Pratica">Comprar agora</a>
-        </div>
-
+      <div class="cards-grid cards-grid-info" id="infoprodutosGrid">
+        <p class="loading-placeholder">Carregando produtos...</p>
       </div>
 
       <p class="info-nota">
