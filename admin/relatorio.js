@@ -148,6 +148,10 @@
     document.getElementById('navCliente').textContent = r.cliente || '—';
     document.getElementById('navPeriodo').textContent = r.periodo || '—';
     document.title = `${r.cliente} · ${r.periodo} | CM Soluções Financeiras`;
+    if (r.clienteId) {
+      const voltar = document.querySelector('.rel-nav-voltar');
+      if (voltar) voltar.href = `cliente.html?id=${encodeURIComponent(r.clienteId)}`;
+    }
 
     const secoes = [];
     const nav = [];

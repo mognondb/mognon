@@ -14,7 +14,8 @@ assets/downloads/           Planilhas gratuitas (CSV) disponíveis para download
 assets/img/                 Logo e imagens
 admin/                      Painel administrativo (escondido, não linkado no site)
 admin/worker.js             Código do servidor (Cloudflare Worker) usado pelo painel
-admin/relatorio.html(.js/.css)  Apresentação de relatórios de fechamento por cliente
+admin/cliente.html(.js)     Pasta de um cliente: lista e cadastra os relatórios dele
+admin/relatorio.html(.js/.css)  Apresentação de um relatório de fechamento
 admin/README-servidor.md    Passo a passo para publicar o servidor
 robots.txt                  Bloqueia indexação de /admin/ por buscadores
 legacy-jekyll-boilerplate/  Arquivos antigos do scaffold padrão do GitHub Pages (não usados)
@@ -62,25 +63,31 @@ O painel não aparece no menu do site e é bloqueado em `robots.txt`, mas isso �
 não aparecer em buscas — quem de fato impede alguém de salvar algo é o usuário/senha
 verificado pelo servidor.
 
-### Relatórios de fechamento por cliente (apresentação ao vivo)
+### Clientes e seus relatórios de fechamento (apresentação ao vivo)
 
-Uma terceira aba do painel, **"Relatórios de Clientes"**, guarda os fechamentos
-mensais (ex.: Instituto Luanda, Setembro/2026) para apresentar ao cliente numa
-reunião. Diferente dos infoprodutos/dashboards do portfólio, **esses dados nunca
-são públicos**: tanto a leitura quanto a gravação exigem login no servidor.
+Uma terceira aba do painel, **"Clientes"**, funciona como uma pasta por cliente
+(`admin/cliente.html?id=<id>`): dentro de cada cliente você cadastra os relatórios de
+fechamento mensais daquele cliente (ex.: Instituto Luanda → Setembro/2026, Outubro/2026...)
+para apresentar numa reunião. Diferente dos infoprodutos/dashboards do portfólio,
+**esses dados nunca são públicos**: tanto a leitura quanto a gravação exigem login no
+servidor.
 
-- **Criar um relatório sem código**: pelo formulário (campos de lista usam uma
-  linha por item, colunas separadas por `|`), ou importando uma planilha `.xlsx`
-  no modelo próprio — botão **"Baixar modelo"** no painel gera esse arquivo.
-  Depois de importar, revise os campos antes de salvar.
+- **Aba "Clientes"** (`admin/index.html`): lista os clientes cadastrados, cria novos
+  (nome + observações) e exclui (excluir um cliente apaga também todos os relatórios
+  dele).
+- **Dentro de um cliente** (`admin/cliente.html?id=<id>`): lista os relatórios daquele
+  cliente, com opção de marcar cada um como ativo/inativo. Criar um relatório sem
+  código, pelo formulário (campos de lista usam uma linha por item, colunas separadas
+  por `|`) ou importando uma planilha `.xlsx` no modelo próprio — botão **"Baixar
+  modelo"** gera esse arquivo. Depois de importar, revise os campos antes de salvar.
 - **Apresentar ao cliente**: cada relatório salvo ganha uma página própria em
-  `admin/relatorio.html?id=<id>` (link "Abrir" na lista do painel) — um dashboard
+  `admin/relatorio.html?id=<id>` (link "Abrir" na lista do cliente) — um dashboard
   navegável por seções (resumo executivo, indicadores, formação do caixa, receita,
-  despesas, produção por profissional, contas, pendências, próximos passos),
-  pronta pra usar numa tela/projeção durante a reunião. Pede login própria (mesmo
-  usuário/senha do painel).
-- Esses dados ficam só no Cloudflare KV (nunca no repositório Git) — por isso
-  nenhum relatório real está versionado aqui.
+  despesas, produção por profissional, contas, pendências, próximos passos), pronta
+  pra usar numa tela/projeção durante a reunião. Pede login própria (mesmo
+  usuário/senha do painel) e tem um link de volta para a pasta do cliente certo.
+- Esses dados ficam só no Cloudflare KV (nunca no repositório Git) — por isso nenhum
+  cliente ou relatório real está versionado aqui.
 
 ## Configurações pendentes (precisam dos seus dados reais)
 
@@ -111,9 +118,10 @@ painel e guarda os dados (gratuito, ~5 min, sem token nenhum). Sem isso, o paine
 fica no ar mas não consegue carregar nem salvar nada.
 
 **Se você já tinha publicado o Worker antes:** o `admin/worker.js` ganhou as rotas de
-relatórios (`/api/relatorios`, `/api/relatorio`) — copie o conteúdo atualizado do
-arquivo para o Worker no Cloudflare (Edit code → colar → Save and Deploy). Nenhuma
-variável nova é necessária, reaproveita `ADMIN_USER`/`ADMIN_PASS`/`CM_DATA`.
+clientes e relatórios (`/api/clientes`, `/api/cliente`, `/api/relatorios`,
+`/api/relatorio`) — toda vez que o arquivo for atualizado, copie o conteúdo novo para
+o Worker no Cloudflare (Edit code → colar → Save and Deploy). Nenhuma variável nova é
+necessária, reaproveita `ADMIN_USER`/`ADMIN_PASS`/`CM_DATA`.
 
 ### 5. Site público mostrar os dados em tempo real (opcional)
 Por padrão o site lê `assets/data/*.json` (arquivos fixos). Depois de publicar o

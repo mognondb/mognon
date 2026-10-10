@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Cliente | CM Soluções Financeiras</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-body">
+
+<!-- LOGIN -->
+<div class="admin-login" id="loginScreen">
+  <div class="admin-login-box">
+    <img src="../assets/img/logo-cm.png" alt="CM Soluções Financeiras" class="admin-logo">
+    <h1>Painel Administrativo</h1>
+    <p class="admin-sub">Área restrita — acesso só para a equipe CM.</p>
+
+    <form id="loginForm">
+      <label for="userInput">Usuário</label>
+      <input type="text" id="userInput" autocomplete="username" required>
+      <label for="passInput">Senha</label>
+      <input type="password" id="passInput" autocomplete="current-password" required>
+      <button type="submit" class="btn btn-primary btn-block" id="btnEntrar">Entrar</button>
+      <p class="admin-feedback" id="loginFeedback" role="status"></p>
+    </form>
+  </div>
+</div>
+
+<!-- PAINEL DO CLIENTE -->
+<div class="admin-painel" id="painel" hidden>
+  <header class="admin-header">
+    <div class="admin-header-inner">
+      <img src="../assets/img/logo-cm.png" alt="CM" class="admin-logo-sm">
+      <h1 id="nomeCliente">Cliente</h1>
+      <a href="index.html" class="btn btn-ghost btn-sm">← Clientes</a>
+      <button class="btn btn-outline btn-sm" id="btnSair">Sair</button>
+    </div>
+  </header>
+
+  <main class="admin-main">
+    <p class="admin-field-hint" style="margin-bottom:16px;">
+      Relatórios de fechamento (dashboards de apresentação) desse cliente, mês a mês.
+      Marque como "ativo" o relatório mais recente para destacá-lo na listagem.
+    </p>
+    <div class="admin-toolbar">
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn btn-primary" id="btnNovoRelatorio">+ Novo relatório</button>
+        <button class="btn btn-outline" id="btnImportarPlanilha">Importar planilha (.xlsx)</button>
+        <a class="btn btn-ghost" id="btnBaixarModelo" href="#" download>Baixar modelo</a>
+        <input type="file" id="inputPlanilha" accept=".xlsx" hidden>
+      </div>
+      <div class="admin-toolbar-actions">
+        <button class="btn btn-ghost btn-sm" id="btnRecarregarRelatorios">Recarregar</button>
+      </div>
+    </div>
+    <p class="admin-feedback" id="feedbackRelatorios" role="status"></p>
+    <div class="admin-lista" id="listaRelatorios">
+      <p class="loading-placeholder">Carregando...</p>
+    </div>
+  </main>
+</div>
+
+<!-- MODAL: FORM RELATÓRIO -->
+<div class="admin-modal" id="modalRelatorio" hidden>
+  <div class="admin-modal-box admin-modal-box-wide">
+    <h2 id="modalRelatorioTitulo">Novo relatório</h2>
+    <p class="admin-field-hint">
+      Cada campo de lista aceita uma linha por item, com as colunas separadas por
+      <code>|</code> (barra vertical). Deixe em branco o que não tiver nesse mês.
+    </p>
+    <form id="formRelatorio2">
+      <h3 class="subtitulo-sm">Identificação</h3>
+      <label for="rPeriodo">Período *</label>
+      <input type="text" id="rPeriodo" required placeholder="Ex: Setembro/2026">
+      <div class="form-row">
+        <div>
+          <label for="rPreparadoPor">Preparado por</label>
+          <input type="text" id="rPreparadoPor" placeholder="CM Soluções Financeiras">
+        </div>
+        <div>
+          <label for="rDataPreparo">Data de preparo</label>
+          <input type="text" id="rDataPreparo" placeholder="Ex: Outubro/2026">
+        </div>
+      </div>
+      <label class="checkbox-label">
+        <input type="checkbox" id="rAtivo" checked>
+        Relatório ativo (destacado na listagem desse cliente)
+      </label>
+
+      <h3 class="subtitulo-sm">Resumo executivo</h3>
+      <label for="rResumo">Uma frase por linha</label>
+      <textarea id="rResumo" rows="4" placeholder="Caixa de setembro: +R$ 422...
+Operação no limite: receita de R$ 9,5 mil..."></textarea>
+
+      <h3 class="subtitulo-sm">Indicadores do mês</h3>
+      <div class="form-row">
+        <div><label for="rKpiReceita">Receita operacional (R$)</label><input type="number" step="0.01" id="rKpiReceita"></div>
+        <div><label for="rKpiDespesas">Despesas operacionais (R$)</label><input type="number" step="0.01" id="rKpiDespesas"></div>
+      </div>
+      <div class="form-row">
+        <div><label for="rKpiResultado">Resultado operacional (R$)</label><input type="number" step="0.01" id="rKpiResultado"></div>
+        <div><label for="rKpiMargem">Margem operacional (%)</label><input type="number" step="0.01" id="rKpiMargem" placeholder="Ex: 3.1"></div>
+      </div>
+      <div class="form-row">
+        <div><label for="rKpiCaixaMes">Resultado de caixa do mês (R$)</label><input type="number" step="0.01" id="rKpiCaixaMes"></div>
+        <div><label for="rKpiCaixaSemEmprestimo">Caixa sem empréstimo (R$)</label><input type="number" step="0.01" id="rKpiCaixaSemEmprestimo"></div>
+      </div>
+      <div class="form-row">
+        <div><label for="rKpiSessoes">Sessões/atendimentos realizados</label><input type="number" id="rKpiSessoes"></div>
+        <div><label for="rKpiTicket">Ticket médio (R$)</label><input type="number" step="0.01" id="rKpiTicket"></div>
+      </div>
+
+      <h3 class="subtitulo-sm">Formação do caixa</h3>
+      <label for="rFormacaoTitulo">Legenda do gráfico</label>
+      <input type="text" id="rFormacaoTitulo" placeholder="Formação do resultado de caixa, R$, mês/ano">
+      <label for="rFormacaoItens">Itens — Label | Valor | Tipo (entrada / saida / total)</label>
+      <textarea id="rFormacaoItens" rows="4" placeholder="Receita | 9510 | entrada
+Despesas | -9213 | saida
+Caixa | 422 | total"></textarea>
+
+      <h3 class="subtitulo-sm">Receita por serviço</h3>
+      <label for="rReceitaServico">Label | Valor</label>
+      <textarea id="rReceitaServico" rows="3" placeholder="Psicologia infantojuvenil | 3830"></textarea>
+
+      <h3 class="subtitulo-sm">Despesas por grupo</h3>
+      <label for="rDespesasGrupo">Label | Valor</label>
+      <textarea id="rDespesasGrupo" rows="3" placeholder="Serviços e sistemas | 2270"></textarea>
+
+      <h3 class="subtitulo-sm">Despesas por subcategoria</h3>
+      <label for="rDespesasSub">Label | Valor</label>
+      <textarea id="rDespesasSub" rows="3" placeholder="Contabilidade | 1510"></textarea>
+
+      <h3 class="subtitulo-sm">Produção por profissional</h3>
+      <label for="rProducao">Profissional | Sessões | Produzido | Recebido</label>
+      <textarea id="rProducao" rows="3" placeholder="Hadassa | 32 | 3850 | 950"></textarea>
+
+      <h3 class="subtitulo-sm">Caixa por conta</h3>
+      <label for="rCaixaConta">Conta | Entradas | Saídas</label>
+      <textarea id="rCaixaConta" rows="3" placeholder="Sicoob | 9570 | 9897"></textarea>
+
+      <h3 class="subtitulo-sm">Contas a pagar — por mês</h3>
+      <label for="rAPagarMes">Mês | Valor</label>
+      <textarea id="rAPagarMes" rows="3" placeholder="Out | 13651"></textarea>
+
+      <h3 class="subtitulo-sm">Contas a pagar — por categoria</h3>
+      <label for="rAPagarCategoria">Label | Valor</label>
+      <textarea id="rAPagarCategoria" rows="3" placeholder="Pró-labore | 21467"></textarea>
+
+      <h3 class="subtitulo-sm">Pendências</h3>
+      <label for="rPendencias">Pendência | Situação encontrada | O que precisamos</label>
+      <textarea id="rPendencias" rows="3" placeholder="Despesas sem fornecedor | R$ 600 em 4 lançamentos | Fornecedor e categoria"></textarea>
+
+      <h3 class="subtitulo-sm">Próximos passos</h3>
+      <label for="rPassos">Prazo | Responsável | Título | Descrição</label>
+      <textarea id="rPassos" rows="3" placeholder="Até 17/out | Instituto | Responder às pendências | Fornecedores, valores e datas listados acima."></textarea>
+
+      <h3 class="subtitulo-sm">Fontes / observações</h3>
+      <textarea id="rFontes" rows="2" placeholder="Fonte: extratos bancários, set/2026; consolidação CM Soluções Financeiras."></textarea>
+
+      <div class="admin-modal-actions">
+        <button type="button" class="btn btn-outline" id="btnCancelarRelatorio">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar relatório</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="cliente.js"></script>
+</body>
+</html>

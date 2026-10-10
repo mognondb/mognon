@@ -168,18 +168,86 @@ export default {
         : jsonResponse({ message: 'Usuário ou senha inválidos' }, 401, env);
     }
 
-    // Relatórios (dashboards de apresentação para clientes): sempre exigem login,
+    // Clientes e seus relatórios/dashboards de apresentação: sempre exigem login,
     // tanto pra ler quanto pra gravar — são dados financeiros sensíveis de clientes,
     // diferente dos infoprodutos/dashboards do portfólio (que são públicos).
-    if (url.pathname === '/api/relatorios' || url.pathname === '/api/relatorio') {
+    const rotasClientes = ['/api/clientes', '/api/cliente', '/api/relatorios', '/api/relatorio'];
+    if (rotasClientes.includes(url.pathname)) {
       if (!autenticado(request, env)) {
         return jsonResponse({ message: 'Usuário ou senha inválidos' }, 401, env);
       }
 
-      // Lista resumida (id, cliente, período) para a tela de listagem do painel.
+      // ---- Clientes ----
+
+      if (url.pathname === '/api/clientes') {
+        if (request.method !== 'GET') return jsonResponse({ message: 'Método não suportado' }, 405, env);
+        const indice = (await env.CM_DATA.get('clientes_index', 'json')) || [];
+        return jsonResponse(indice, 200, env);
+      }
+
+      if (url.pathname === '/api/cliente') {
+        const id = url.searchParams.get('id');
+
+        if (request.method === 'GET') {
+          if (!id) return jsonResponse({ message: 'Parâmetro "id" obrigatório' }, 400, env);
+          const cliente = await env.CM_DATA.get(`cliente_${id}`, 'json');
+          if (!cliente) return jsonResponse({ message: 'Cliente não encontrado' }, 404, env);
+          return jsonResponse(cliente, 200, env);
+        }
+
+        if (request.method === 'PUT') {
+          let cliente;
+          try {
+            cliente = await request.json();
+          } catch {
+            return jsonResponse({ message: 'JSON inválido' }, 400, env);
+          }
+          if (!cliente.nome) return jsonResponse({ message: 'Informe o nome do cliente' }, 400, env);
+          const idFinal = cliente.id || slugify(cliente.nome);
+          cliente.id = idFinal;
+          cliente.atualizadoEm = new Date().toISOString();
+          if (!cliente.criadoEm) cliente.criadoEm = cliente.atualizadoEm;
+
+          await env.CM_DATA.put(`cliente_${idFinal}`, JSON.stringify(cliente));
+
+          const indiceClientes = (await env.CM_DATA.get('clientes_index', 'json')) || [];
+          const relatoriosDoCliente = ((await env.CM_DATA.get('relatorios_index', 'json')) || [])
+            .filter((r) => r.clienteId === idFinal);
+          const resumo = { id: idFinal, nome: cliente.nome, qtdRelatorios: relatoriosDoCliente.length, atualizadoEm: cliente.atualizadoEm };
+          const posicao = indiceClientes.findIndex((c) => c.id === idFinal);
+          if (posicao >= 0) indiceClientes[posicao] = resumo; else indiceClientes.push(resumo);
+          await env.CM_DATA.put('clientes_index', JSON.stringify(indiceClientes));
+
+          return jsonResponse(cliente, 200, env);
+        }
+
+        if (request.method === 'DELETE') {
+          if (!id) return jsonResponse({ message: 'Parâmetro "id" obrigatório' }, 400, env);
+          await env.CM_DATA.delete(`cliente_${id}`);
+          const indiceClientes = ((await env.CM_DATA.get('clientes_index', 'json')) || []).filter((c) => c.id !== id);
+          await env.CM_DATA.put('clientes_index', JSON.stringify(indiceClientes));
+
+          // Remove também os relatórios desse cliente.
+          const indiceRelatorios = (await env.CM_DATA.get('relatorios_index', 'json')) || [];
+          const doCliente = indiceRelatorios.filter((r) => r.clienteId === id);
+          for (const r of doCliente) await env.CM_DATA.delete(`relatorio_${r.id}`);
+          const indiceRestante = indiceRelatorios.filter((r) => r.clienteId !== id);
+          await env.CM_DATA.put('relatorios_index', JSON.stringify(indiceRestante));
+
+          return jsonResponse({ ok: true }, 200, env);
+        }
+
+        return jsonResponse({ message: 'Método não suportado' }, 405, env);
+      }
+
+      // ---- Relatórios (sempre pertencem a um cliente) ----
+
+      // Lista resumida — opcionalmente filtrada por cliente — para as telas de listagem.
       if (url.pathname === '/api/relatorios') {
         if (request.method !== 'GET') return jsonResponse({ message: 'Método não suportado' }, 405, env);
-        const indice = (await env.CM_DATA.get('relatorios_index', 'json')) || [];
+        const clienteId = url.searchParams.get('clienteId');
+        let indice = (await env.CM_DATA.get('relatorios_index', 'json')) || [];
+        if (clienteId) indice = indice.filter((r) => r.clienteId === clienteId);
         return jsonResponse(indice, 200, env);
       }
 
@@ -200,29 +268,56 @@ export default {
         } catch {
           return jsonResponse({ message: 'JSON inválido' }, 400, env);
         }
-        if (!relatorio.cliente || !relatorio.periodo) {
-          return jsonResponse({ message: 'Informe ao menos cliente e período' }, 400, env);
+        if (!relatorio.clienteId || !relatorio.periodo) {
+          return jsonResponse({ message: 'Informe ao menos o cliente e o período' }, 400, env);
         }
-        const idFinal = relatorio.id || slugify(`${relatorio.cliente}-${relatorio.periodo}`);
+        const idFinal = relatorio.id || slugify(`${relatorio.clienteId}-${relatorio.periodo}`);
         relatorio.id = idFinal;
+        if (relatorio.ativo == null) relatorio.ativo = true;
         relatorio.atualizadoEm = new Date().toISOString();
 
         await env.CM_DATA.put(`relatorio_${idFinal}`, JSON.stringify(relatorio));
 
         const indice = (await env.CM_DATA.get('relatorios_index', 'json')) || [];
-        const resumo = { id: idFinal, cliente: relatorio.cliente, periodo: relatorio.periodo, atualizadoEm: relatorio.atualizadoEm };
+        const resumo = {
+          id: idFinal,
+          clienteId: relatorio.clienteId,
+          cliente: relatorio.cliente,
+          periodo: relatorio.periodo,
+          ativo: relatorio.ativo,
+          atualizadoEm: relatorio.atualizadoEm,
+        };
         const posicao = indice.findIndex((r) => r.id === idFinal);
         if (posicao >= 0) indice[posicao] = resumo; else indice.push(resumo);
         await env.CM_DATA.put('relatorios_index', JSON.stringify(indice));
+
+        // Atualiza a contagem de relatórios no índice de clientes.
+        const indiceClientes = (await env.CM_DATA.get('clientes_index', 'json')) || [];
+        const posicaoCliente = indiceClientes.findIndex((c) => c.id === relatorio.clienteId);
+        if (posicaoCliente >= 0) {
+          indiceClientes[posicaoCliente].qtdRelatorios = indice.filter((r) => r.clienteId === relatorio.clienteId).length;
+          await env.CM_DATA.put('clientes_index', JSON.stringify(indiceClientes));
+        }
 
         return jsonResponse(relatorio, 200, env);
       }
 
       if (request.method === 'DELETE') {
         if (!id) return jsonResponse({ message: 'Parâmetro "id" obrigatório' }, 400, env);
+        const existente = await env.CM_DATA.get(`relatorio_${id}`, 'json');
         await env.CM_DATA.delete(`relatorio_${id}`);
         const indice = ((await env.CM_DATA.get('relatorios_index', 'json')) || []).filter((r) => r.id !== id);
         await env.CM_DATA.put('relatorios_index', JSON.stringify(indice));
+
+        if (existente?.clienteId) {
+          const indiceClientes = (await env.CM_DATA.get('clientes_index', 'json')) || [];
+          const posicaoCliente = indiceClientes.findIndex((c) => c.id === existente.clienteId);
+          if (posicaoCliente >= 0) {
+            indiceClientes[posicaoCliente].qtdRelatorios = indice.filter((r) => r.clienteId === existente.clienteId).length;
+            await env.CM_DATA.put('clientes_index', JSON.stringify(indiceClientes));
+          }
+        }
+
         return jsonResponse({ ok: true }, 200, env);
       }
 
