@@ -5,6 +5,7 @@
   const API_URL = 'https://bold-forest-84c8fff.mognon-db.workers.dev';
 
   let authHeader = sessionStorage.getItem('cm_admin_auth') || '';
+  let papelSessao = sessionStorage.getItem('cm_admin_papel') || 'admin';
 
   function escapeHtml(str) {
     const div = document.createElement('div');
@@ -43,9 +44,12 @@
       const res = await fetch(`${API_URL}/api/login`, { headers: { Authorization: tentativaAuth } });
       if (res.status === 401) throw new Error('Usuário ou senha inválidos.');
       if (!res.ok) throw new Error(`Não foi possível falar com o servidor (HTTP ${res.status}).`);
+      const dadosSessao = await res.json().catch(() => ({}));
 
       authHeader = tentativaAuth;
+      papelSessao = dadosSessao.papel || 'admin';
       sessionStorage.setItem('cm_admin_auth', authHeader);
+      sessionStorage.setItem('cm_admin_papel', papelSessao);
       loginScreen.hidden = true;
       iniciar();
     } catch (err) {
@@ -75,6 +79,7 @@
     const res = await fetch(`${API_URL}${path}`, { headers: { Authorization: authHeader } });
     if (res.status === 401) {
       sessionStorage.removeItem('cm_admin_auth');
+      sessionStorage.removeItem('cm_admin_papel');
       loginScreen.hidden = false;
       throw new Error('Sessão expirada, faça login de novo.');
     }
@@ -173,9 +178,13 @@
     document.getElementById('navCliente').textContent = r.cliente || '—';
     document.getElementById('navPeriodo').textContent = r.periodo || '—';
     document.title = `${r.cliente} · ${r.periodo} | CM Soluções Financeiras`;
-    if (r.clienteId) {
-      const voltar = document.querySelector('.rel-nav-voltar');
-      if (voltar) voltar.href = `cliente.html?id=${encodeURIComponent(r.clienteId)}`;
+    const voltar = document.querySelector('.rel-nav-voltar');
+    if (voltar) {
+      if (r.clienteId && papelSessao === 'admin') {
+        voltar.href = `cliente.html?id=${encodeURIComponent(r.clienteId)}`;
+      } else {
+        voltar.hidden = true;
+      }
     }
 
     if (r.modo === 'embed') return renderizarEmbed(r);

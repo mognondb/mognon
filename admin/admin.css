@@ -11,6 +11,9 @@
   padding: 24px;
 }
 .admin-login[hidden] { display: none; }
+/* .btn (assets/css/style.css) seta display:inline-block, o que por especificidade de
+   mesmo peso "vence" o display:none padrão do navegador para [hidden] — reforça aqui. */
+[hidden] { display: none !important; }
 .admin-login-box {
   background: #fff;
   border: 1px solid var(--color-border);

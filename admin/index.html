@@ -47,6 +47,7 @@
     <button class="admin-tab active" data-tab="infoprodutos">Infoprodutos</button>
     <button class="admin-tab" data-tab="dashboards">Dashboards (Portfólio)</button>
     <button class="admin-tab" data-tab="clientes">Clientes</button>
+    <button class="admin-tab" data-tab="usuarios">Usuários</button>
   </nav>
 
   <main class="admin-main">
@@ -98,6 +99,27 @@
       </div>
       <p class="admin-feedback" id="feedbackClientes" role="status"></p>
       <div class="admin-lista" id="listaClientes">
+        <p class="loading-placeholder">Carregando...</p>
+      </div>
+    </section>
+
+    <!-- TAB USUÁRIOS -->
+    <section class="admin-tab-panel" id="tab-usuarios" hidden>
+      <p class="admin-field-hint" style="margin-bottom:16px;">
+        Além do seu login (administrador), você pode criar outros acessos com permissão
+        limitada: um usuário do tipo <strong>Cliente</strong> só enxerga a pasta de um
+        cliente específico (em modo leitura); um usuário do tipo <strong>Dashboard</strong>
+        só enxerga um relatório específico — útil pra compartilhar um link de acesso com
+        o próprio cliente, sem dar acesso ao painel inteiro.
+      </p>
+      <div class="admin-toolbar">
+        <button class="btn btn-primary" id="btnNovoUsuario">+ Novo usuário</button>
+        <div class="admin-toolbar-actions">
+          <button class="btn btn-ghost btn-sm" id="btnRecarregarUsuarios">Recarregar</button>
+        </div>
+      </div>
+      <p class="admin-feedback" id="feedbackUsuarios" role="status"></p>
+      <div class="admin-lista" id="listaUsuarios">
         <p class="loading-placeholder">Carregando...</p>
       </div>
     </section>
@@ -216,6 +238,52 @@
       <div class="admin-modal-actions">
         <button type="button" class="btn btn-outline" id="btnCancelarCliente">Cancelar</button>
         <button type="submit" class="btn btn-primary">Criar cliente</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL: NOVO/EDITAR USUÁRIO -->
+<div class="admin-modal" id="modalUsuario" hidden>
+  <div class="admin-modal-box">
+    <h2 id="modalUsuarioTitulo">Novo usuário</h2>
+    <form id="formUsuario">
+      <label for="uUsername">Usuário (login) *</label>
+      <input type="text" id="uUsername" required placeholder="Ex: joao.instituto">
+
+      <label for="uNome">Nome *</label>
+      <input type="text" id="uNome" required placeholder="Ex: João (Instituto Luanda)">
+
+      <label for="uSenha">Senha</label>
+      <input type="password" id="uSenha" autocomplete="new-password" placeholder="Deixe em branco para manter a senha atual">
+
+      <label for="uPapel">Permissão *</label>
+      <select id="uPapel" required>
+        <option value="admin">Administrador — acesso total ao painel</option>
+        <option value="cliente">Cliente — só a pasta de um cliente (leitura)</option>
+        <option value="dashboard">Dashboard — só um relatório específico (leitura)</option>
+      </select>
+
+      <div id="campoUsuarioCliente">
+        <label for="uCliente">Cliente *</label>
+        <select id="uCliente"></select>
+      </div>
+
+      <div id="campoUsuarioRelatorio">
+        <label for="uRelatorioCliente">Cliente do relatório *</label>
+        <select id="uRelatorioCliente"></select>
+        <label for="uRelatorio">Relatório *</label>
+        <select id="uRelatorio"></select>
+      </div>
+
+      <label class="checkbox-label">
+        <input type="checkbox" id="uAtivo" checked>
+        Usuário ativo
+      </label>
+
+      <div class="admin-modal-actions">
+        <button type="button" class="btn btn-outline" id="btnCancelarUsuario">Cancelar</button>
+        <button type="submit" class="btn btn-primary">Salvar usuário</button>
       </div>
     </form>
   </div>

@@ -120,6 +120,18 @@
         throw new Error(body.message || `Não foi possível falar com o servidor (HTTP ${res.status}).`);
       }
 
+      const dadosSessao = await res.json().catch(() => ({}));
+      if (dadosSessao.papel && dadosSessao.papel !== 'admin') {
+        loginFeedback.textContent = 'Este usuário não tem acesso ao painel administrativo completo.';
+        loginFeedback.className = 'admin-feedback error';
+        if (dadosSessao.papel === 'cliente' && dadosSessao.clienteId) {
+          location.href = `cliente.html?id=${encodeURIComponent(dadosSessao.clienteId)}`;
+        } else if (dadosSessao.papel === 'dashboard' && dadosSessao.relatorioId) {
+          location.href = `relatorio.html?id=${encodeURIComponent(dadosSessao.relatorioId)}`;
+        }
+        return;
+      }
+
       authHeader = tentativaAuth;
       sessionStorage.setItem('cm_admin_auth', authHeader);
 
@@ -146,6 +158,7 @@
   document.getElementById('btnSair').addEventListener('click', () => {
     authHeader = '';
     sessionStorage.removeItem('cm_admin_auth');
+    sessionStorage.removeItem('cm_admin_papel');
     painel.hidden = true;
     loginScreen.hidden = false;
     passInput.value = '';
@@ -155,14 +168,21 @@
   // Se já existe uma sessão ativa nesta aba (ex: recarregou a página), reentra direto
   if (authHeader && config.apiUrl) {
     fetch(`${config.apiUrl}/api/login`, { headers: { Authorization: authHeader } })
-      .then((res) => {
-        if (res.ok) {
-          loginScreen.hidden = true;
-          painel.hidden = false;
-          carregarTudo();
-        } else {
+      .then(async (res) => {
+        if (!res.ok) {
           sessionStorage.removeItem('cm_admin_auth');
+          sessionStorage.removeItem('cm_admin_papel');
+          return;
         }
+        const dadosSessao = await res.json().catch(() => ({}));
+        if (dadosSessao.papel && dadosSessao.papel !== 'admin') {
+          sessionStorage.removeItem('cm_admin_auth');
+          sessionStorage.removeItem('cm_admin_papel');
+          return;
+        }
+        loginScreen.hidden = true;
+        painel.hidden = false;
+        carregarTudo();
       })
       .catch(() => {});
   }
@@ -181,6 +201,7 @@
   function carregarTudo() {
     TIPOS.forEach(carregarLista);
     carregarClientes();
+    carregarUsuarios();
   }
 
   // ---------- Carregar / Renderizar listas ----------
@@ -553,6 +574,214 @@
       modalCliente.hidden = true;
       await carregarClientes();
       feedback.textContent = 'Cliente criado!';
+      feedback.className = 'admin-feedback success';
+    } catch (err) {
+      feedback.textContent = err.message;
+      feedback.className = 'admin-feedback error';
+    }
+  });
+
+  // ---------- Usuários (acessos com permissão limitada) ----------
+
+  const PAPEL_LABEL = { admin: 'Administrador', cliente: 'Cliente', dashboard: 'Dashboard' };
+  const usuariosState = { itens: [], editUsername: null };
+
+  async function apiUsuarios() {
+    const res = await fetch(`${config.apiUrl}/api/usuarios`, { headers: { Authorization: authHeader } });
+    const body = await res.json().catch(() => ([]));
+    if (!res.ok) throw new Error(body.message || `Erro (HTTP ${res.status})`);
+    return body;
+  }
+  async function apiSalvarUsuario(usuario) {
+    const res = await fetch(`${config.apiUrl}/api/usuario`, {
+      method: 'PUT',
+      headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
+      body: JSON.stringify(usuario),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.message || `Erro (HTTP ${res.status})`);
+    return body;
+  }
+  async function apiExcluirUsuario(username) {
+    const res = await fetch(`${config.apiUrl}/api/usuario?username=${encodeURIComponent(username)}`, {
+      method: 'DELETE',
+      headers: { Authorization: authHeader },
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.message || `Erro (HTTP ${res.status})`);
+    return body;
+  }
+  async function apiRelatoriosDoCliente(clienteId) {
+    const res = await fetch(`${config.apiUrl}/api/relatorios?clienteId=${encodeURIComponent(clienteId)}`, { headers: { Authorization: authHeader } });
+    const body = await res.json().catch(() => ([]));
+    if (!res.ok) throw new Error(body.message || `Erro (HTTP ${res.status})`);
+    return body;
+  }
+
+  async function carregarUsuarios() {
+    const lista = document.getElementById('listaUsuarios');
+    const feedback = document.getElementById('feedbackUsuarios');
+    lista.innerHTML = '<p class="loading-placeholder">Carregando...</p>';
+    feedback.textContent = '';
+    feedback.className = 'admin-feedback';
+    try {
+      usuariosState.itens = await apiUsuarios();
+      renderListaUsuarios();
+    } catch (err) {
+      lista.innerHTML = '';
+      feedback.textContent = err.message;
+      feedback.className = 'admin-feedback error';
+    }
+  }
+
+  function renderListaUsuarios() {
+    const lista = document.getElementById('listaUsuarios');
+    if (usuariosState.itens.length === 0) {
+      lista.innerHTML = '<p class="loading-placeholder">Nenhum usuário adicional cadastrado ainda.</p>';
+      return;
+    }
+    lista.innerHTML = usuariosState.itens
+      .slice()
+      .sort((a, b) => a.username.localeCompare(b.username))
+      .map((u) => {
+        const clienteNome = u.papel === 'cliente' ? (clientesState.itens.find((c) => c.id === u.clienteId)?.nome || u.clienteId) : '';
+        const escopo = u.papel === 'admin' ? '' : u.papel === 'cliente' ? ` · ${escapeHtml(clienteNome)}` : ` · relatório ${escapeHtml(u.relatorioId || '')}`;
+        return `
+          <div class="admin-item ${u.ativo === false ? 'inativo' : ''}" data-username="${escapeHtml(u.username)}">
+            <div class="admin-item-icon">${u.papel === 'admin' ? '🛡️' : u.papel === 'cliente' ? '🗂️' : '🔗'}</div>
+            <div class="admin-item-info">
+              <h4>${escapeHtml(u.nome)} <small>(${escapeHtml(u.username)})</small></h4>
+              <p>${PAPEL_LABEL[u.papel] || u.papel}${escopo}</p>
+              <span class="admin-item-meta">${u.ativo === false ? 'Inativo' : 'Ativo'}</span>
+            </div>
+            <div class="admin-item-actions">
+              <button class="btn btn-ghost btn-sm" data-acao="editar">Editar</button>
+              <button class="btn btn-outline btn-sm" data-acao="remover">Remover</button>
+            </div>
+          </div>`;
+      }).join('');
+
+    lista.querySelectorAll('.admin-item').forEach((el) => {
+      const username = el.dataset.username;
+      el.querySelector('[data-acao="editar"]').addEventListener('click', () => abrirModalUsuario(username));
+      el.querySelector('[data-acao="remover"]').addEventListener('click', () => removerUsuario(username));
+    });
+  }
+
+  async function removerUsuario(username) {
+    if (!confirm(`Excluir o acesso de "${username}"?`)) return;
+    const feedback = document.getElementById('feedbackUsuarios');
+    try {
+      await apiExcluirUsuario(username);
+      usuariosState.itens = usuariosState.itens.filter((u) => u.username !== username);
+      renderListaUsuarios();
+    } catch (err) {
+      feedback.textContent = err.message;
+      feedback.className = 'admin-feedback error';
+    }
+  }
+
+  document.getElementById('btnRecarregarUsuarios').addEventListener('click', carregarUsuarios);
+
+  const modalUsuario = document.getElementById('modalUsuario');
+  const formUsuario = document.getElementById('formUsuario');
+  const uPapel = document.getElementById('uPapel');
+  const uSenha = document.getElementById('uSenha');
+  const uUsername = document.getElementById('uUsername');
+  const campoUsuarioCliente = document.getElementById('campoUsuarioCliente');
+  const campoUsuarioRelatorio = document.getElementById('campoUsuarioRelatorio');
+  const uCliente = document.getElementById('uCliente');
+  const uRelatorioCliente = document.getElementById('uRelatorioCliente');
+  const uRelatorio = document.getElementById('uRelatorio');
+
+  function preencherSelectClientes(select) {
+    select.innerHTML = clientesState.itens
+      .slice()
+      .sort((a, b) => a.nome.localeCompare(b.nome))
+      .map((c) => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.nome)}</option>`).join('');
+  }
+
+  async function atualizarSelectRelatorios(clienteId, relatorioIdSelecionado) {
+    uRelatorio.innerHTML = '<option value="">Carregando...</option>';
+    try {
+      const itens = await apiRelatoriosDoCliente(clienteId);
+      if (itens.length === 0) {
+        uRelatorio.innerHTML = '<option value="">Nenhum relatório cadastrado para esse cliente</option>';
+        return;
+      }
+      uRelatorio.innerHTML = itens
+        .map((r) => `<option value="${escapeHtml(r.id)}">${escapeHtml(r.tipo)} · ${escapeHtml(r.periodo)}</option>`).join('');
+      if (relatorioIdSelecionado) uRelatorio.value = relatorioIdSelecionado;
+    } catch {
+      uRelatorio.innerHTML = '<option value="">Não foi possível carregar os relatórios</option>';
+    }
+  }
+
+  function atualizarCamposUsuario() {
+    const papel = uPapel.value;
+    campoUsuarioCliente.style.display = papel === 'cliente' ? 'block' : 'none';
+    campoUsuarioRelatorio.style.display = papel === 'dashboard' ? 'block' : 'none';
+    document.getElementById('uCliente').required = papel === 'cliente';
+    document.getElementById('uRelatorioCliente').required = papel === 'dashboard';
+    document.getElementById('uRelatorio').required = papel === 'dashboard';
+  }
+  uPapel.addEventListener('change', atualizarCamposUsuario);
+  uRelatorioCliente.addEventListener('change', () => atualizarSelectRelatorios(uRelatorioCliente.value));
+
+  async function abrirModalUsuario(username) {
+    const item = username ? usuariosState.itens.find((u) => u.username === username) : null;
+    usuariosState.editUsername = username || null;
+
+    document.getElementById('modalUsuarioTitulo').textContent = item ? 'Editar usuário' : 'Novo usuário';
+    uUsername.value = item?.username || '';
+    uUsername.disabled = !!item;
+    document.getElementById('uNome').value = item?.nome || '';
+    uSenha.value = '';
+    uSenha.placeholder = item ? 'Deixe em branco para manter a senha atual' : 'Senha de acesso';
+    uPapel.value = item?.papel || 'cliente';
+    document.getElementById('uAtivo').checked = item ? item.ativo !== false : true;
+
+    preencherSelectClientes(uCliente);
+    preencherSelectClientes(uRelatorioCliente);
+
+    if (item?.papel === 'cliente' && item.clienteId) uCliente.value = item.clienteId;
+    if (item?.papel === 'dashboard') {
+      // Descobre o cliente dono do relatório pra pré-selecionar o combo em cascata.
+      let clienteDoRelatorio = clientesState.itens[0]?.id;
+      for (const c of clientesState.itens) {
+        const itens = await apiRelatoriosDoCliente(c.id).catch(() => []);
+        if (itens.some((r) => r.id === item.relatorioId)) { clienteDoRelatorio = c.id; break; }
+      }
+      if (clienteDoRelatorio) {
+        uRelatorioCliente.value = clienteDoRelatorio;
+        await atualizarSelectRelatorios(clienteDoRelatorio, item.relatorioId);
+      }
+    }
+
+    atualizarCamposUsuario();
+    modalUsuario.hidden = false;
+  }
+
+  document.getElementById('btnNovoUsuario').addEventListener('click', () => abrirModalUsuario(null));
+  document.getElementById('btnCancelarUsuario').addEventListener('click', () => { modalUsuario.hidden = true; });
+
+  formUsuario.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const feedback = document.getElementById('feedbackUsuarios');
+    const dados = {
+      username: uUsername.value.trim(),
+      nome: document.getElementById('uNome').value.trim(),
+      senha: uSenha.value,
+      papel: uPapel.value,
+      clienteId: uPapel.value === 'cliente' ? uCliente.value : null,
+      relatorioId: uPapel.value === 'dashboard' ? uRelatorio.value : null,
+      ativo: document.getElementById('uAtivo').checked,
+    };
+    try {
+      await apiSalvarUsuario(dados);
+      modalUsuario.hidden = true;
+      await carregarUsuarios();
+      feedback.textContent = 'Usuário salvo!';
       feedback.className = 'admin-feedback success';
     } catch (err) {
       feedback.textContent = err.message;

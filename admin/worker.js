@@ -137,20 +137,73 @@ function jsonResponse(body, status, env) {
   });
 }
 
-function autenticado(request, env) {
+// ---------- Usuários, senhas e permissões ----------
+//
+// Além do usuário/senha "mestre" (ADMIN_USER/ADMIN_PASS, guardado como secret do
+// Worker), o painel permite ao admin criar outros usuários, guardados no KV com a
+// senha derivada por PBKDF2 (nunca em texto puro). Cada usuário tem um "papel":
+//   admin      acesso total, inclusive para gerenciar outros usuários
+//   cliente    só enxerga a pasta de UM cliente (clienteId), em modo leitura
+//   dashboard  só enxerga UM relatório específico (relatorioId), em modo leitura
+const PAPEIS_VALIDOS = ['admin', 'cliente', 'dashboard'];
+
+function bytesToHex(bytes) {
+  return [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+function hexToBytes(hex) {
+  const out = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(hex.substr(i * 2, 2), 16);
+  return out;
+}
+function gerarSaltHex() {
+  return bytesToHex(crypto.getRandomValues(new Uint8Array(16)));
+}
+async function hashSenha(senha, saltHex) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(senha), { name: 'PBKDF2' }, false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt: hexToBytes(saltHex), iterations: 100000, hash: 'SHA-256' },
+    keyMaterial,
+    256,
+  );
+  return bytesToHex(new Uint8Array(bits));
+}
+
+function decodificarBasicAuth(request) {
   const auth = request.headers.get('Authorization') || '';
-  if (!auth.startsWith('Basic ')) return false;
+  if (!auth.startsWith('Basic ')) return null;
   let decodificado;
   try {
     decodificado = atob(auth.slice(6));
   } catch {
-    return false;
+    return null;
   }
   const idx = decodificado.indexOf(':');
-  if (idx === -1) return false;
-  const usuario = decodificado.slice(0, idx);
-  const senha = decodificado.slice(idx + 1);
-  return usuario === env.ADMIN_USER && senha === env.ADMIN_PASS;
+  if (idx === -1) return null;
+  return { usuario: decodificado.slice(0, idx), senha: decodificado.slice(idx + 1) };
+}
+
+// Verifica usuário/senha e devolve a sessão (papel + escopo) ou null.
+async function autenticarSessao(request, env) {
+  const credenciais = decodificarBasicAuth(request);
+  if (!credenciais) return null;
+  const { usuario, senha } = credenciais;
+
+  if (usuario === env.ADMIN_USER && senha === env.ADMIN_PASS) {
+    return { username: usuario, nome: 'Administrador', papel: 'admin' };
+  }
+
+  const registro = await env.CM_DATA.get(`usuario_${usuario}`, 'json');
+  if (!registro || registro.ativo === false) return null;
+  const hash = await hashSenha(senha, registro.saltHex);
+  if (hash !== registro.hashHex) return null;
+  return {
+    username: registro.username,
+    nome: registro.nome,
+    papel: registro.papel,
+    clienteId: registro.clienteId || null,
+    relatorioId: registro.relatorioId || null,
+  };
 }
 
 export default {
@@ -163,30 +216,107 @@ export default {
 
     // Usado só pela tela de login do painel para validar usuário/senha.
     if (url.pathname === '/api/login') {
-      return autenticado(request, env)
-        ? jsonResponse({ ok: true }, 200, env)
+      const sessao = await autenticarSessao(request, env);
+      return sessao
+        ? jsonResponse({ ok: true, papel: sessao.papel, nome: sessao.nome, clienteId: sessao.clienteId, relatorioId: sessao.relatorioId }, 200, env)
         : jsonResponse({ message: 'Usuário ou senha inválidos' }, 401, env);
     }
 
-    // Clientes e seus relatórios/dashboards de apresentação: sempre exigem login,
-    // tanto pra ler quanto pra gravar — são dados financeiros sensíveis de clientes,
-    // diferente dos infoprodutos/dashboards do portfólio (que são públicos).
-    const rotasClientes = ['/api/clientes', '/api/cliente', '/api/relatorios', '/api/relatorio'];
-    if (rotasClientes.includes(url.pathname)) {
-      if (!autenticado(request, env)) {
+    // Clientes, relatórios/dashboards de apresentação e usuários do painel: sempre
+    // exigem login, tanto pra ler quanto pra gravar — são dados financeiros
+    // sensíveis de clientes, diferente dos infoprodutos/dashboards do portfólio
+    // (que são públicos).
+    const rotasProtegidas = ['/api/clientes', '/api/cliente', '/api/relatorios', '/api/relatorio', '/api/usuarios', '/api/usuario'];
+    if (rotasProtegidas.includes(url.pathname)) {
+      const sessao = await autenticarSessao(request, env);
+      if (!sessao) {
         return jsonResponse({ message: 'Usuário ou senha inválidos' }, 401, env);
+      }
+
+      // ---- Usuários do painel (só admin) ----
+
+      if (url.pathname === '/api/usuarios' || url.pathname === '/api/usuario') {
+        if (sessao.papel !== 'admin') return jsonResponse({ message: 'Acesso negado' }, 403, env);
+
+        if (url.pathname === '/api/usuarios') {
+          if (request.method !== 'GET') return jsonResponse({ message: 'Método não suportado' }, 405, env);
+          const indice = (await env.CM_DATA.get('usuarios_index', 'json')) || [];
+          return jsonResponse(indice, 200, env);
+        }
+
+        // /api/usuario
+        const usernameParam = url.searchParams.get('username');
+
+        if (request.method === 'DELETE') {
+          if (!usernameParam) return jsonResponse({ message: 'Parâmetro "username" obrigatório' }, 400, env);
+          await env.CM_DATA.delete(`usuario_${usernameParam}`);
+          const indiceUsuarios = ((await env.CM_DATA.get('usuarios_index', 'json')) || []).filter((u) => u.username !== usernameParam);
+          await env.CM_DATA.put('usuarios_index', JSON.stringify(indiceUsuarios));
+          return jsonResponse({ ok: true }, 200, env);
+        }
+
+        if (request.method === 'PUT') {
+          let dados;
+          try {
+            dados = await request.json();
+          } catch {
+            return jsonResponse({ message: 'JSON inválido' }, 400, env);
+          }
+          const username = (dados.username || '').trim();
+          if (!username) return jsonResponse({ message: 'Informe o nome de usuário' }, 400, env);
+          if (username === env.ADMIN_USER) return jsonResponse({ message: 'Esse nome de usuário já é o do administrador mestre' }, 400, env);
+          if (!PAPEIS_VALIDOS.includes(dados.papel)) return jsonResponse({ message: 'Papel inválido' }, 400, env);
+          if (dados.papel === 'cliente' && !dados.clienteId) return jsonResponse({ message: 'Informe o cliente para o papel "cliente"' }, 400, env);
+          if (dados.papel === 'dashboard' && !dados.relatorioId) return jsonResponse({ message: 'Informe o relatório para o papel "dashboard"' }, 400, env);
+
+          const existente = await env.CM_DATA.get(`usuario_${username}`, 'json');
+          if (!existente && !dados.senha) return jsonResponse({ message: 'Informe uma senha para o novo usuário' }, 400, env);
+
+          const saltHex = existente && !dados.senha ? existente.saltHex : gerarSaltHex();
+          const hashHex = dados.senha ? await hashSenha(dados.senha, saltHex) : existente.hashHex;
+
+          const registro = {
+            username,
+            nome: dados.nome || username,
+            papel: dados.papel,
+            clienteId: dados.papel === 'cliente' ? dados.clienteId : null,
+            relatorioId: dados.papel === 'dashboard' ? dados.relatorioId : null,
+            ativo: dados.ativo !== false,
+            saltHex,
+            hashHex,
+            criadoEm: existente?.criadoEm || new Date().toISOString(),
+            atualizadoEm: new Date().toISOString(),
+          };
+          await env.CM_DATA.put(`usuario_${username}`, JSON.stringify(registro));
+
+          const indiceUsuarios = (await env.CM_DATA.get('usuarios_index', 'json')) || [];
+          const resumo = { username, nome: registro.nome, papel: registro.papel, clienteId: registro.clienteId, relatorioId: registro.relatorioId, ativo: registro.ativo, criadoEm: registro.criadoEm };
+          const posicaoUsuario = indiceUsuarios.findIndex((u) => u.username === username);
+          if (posicaoUsuario >= 0) indiceUsuarios[posicaoUsuario] = resumo; else indiceUsuarios.push(resumo);
+          await env.CM_DATA.put('usuarios_index', JSON.stringify(indiceUsuarios));
+
+          return jsonResponse(resumo, 200, env);
+        }
+
+        return jsonResponse({ message: 'Método não suportado' }, 405, env);
       }
 
       // ---- Clientes ----
 
       if (url.pathname === '/api/clientes') {
         if (request.method !== 'GET') return jsonResponse({ message: 'Método não suportado' }, 405, env);
-        const indice = (await env.CM_DATA.get('clientes_index', 'json')) || [];
+        if (sessao.papel === 'dashboard') return jsonResponse({ message: 'Acesso negado' }, 403, env);
+        let indice = (await env.CM_DATA.get('clientes_index', 'json')) || [];
+        if (sessao.papel === 'cliente') indice = indice.filter((c) => c.id === sessao.clienteId);
         return jsonResponse(indice, 200, env);
       }
 
       if (url.pathname === '/api/cliente') {
         const id = url.searchParams.get('id');
+        if (sessao.papel === 'dashboard') return jsonResponse({ message: 'Acesso negado' }, 403, env);
+        if (sessao.papel === 'cliente' && (request.method !== 'GET' || id !== sessao.clienteId)) {
+          return jsonResponse({ message: 'Acesso negado' }, 403, env);
+        }
 
         if (request.method === 'GET') {
           if (!id) return jsonResponse({ message: 'Parâmetro "id" obrigatório' }, 400, env);
@@ -245,10 +375,15 @@ export default {
       // Lista resumida — opcionalmente filtrada por cliente — para as telas de listagem.
       if (url.pathname === '/api/relatorios') {
         if (request.method !== 'GET') return jsonResponse({ message: 'Método não suportado' }, 405, env);
-        const clienteId = url.searchParams.get('clienteId');
+        if (sessao.papel === 'dashboard') return jsonResponse({ message: 'Acesso negado' }, 403, env);
         const tipo = url.searchParams.get('tipo');
         let indice = (await env.CM_DATA.get('relatorios_index', 'json')) || [];
-        if (clienteId) indice = indice.filter((r) => r.clienteId === clienteId);
+        if (sessao.papel === 'cliente') {
+          indice = indice.filter((r) => r.clienteId === sessao.clienteId && r.ativo !== false);
+        } else {
+          const clienteId = url.searchParams.get('clienteId');
+          if (clienteId) indice = indice.filter((r) => r.clienteId === clienteId);
+        }
         if (tipo) indice = indice.filter((r) => r.tipo === tipo);
         return jsonResponse(indice, 200, env);
       }
@@ -256,10 +391,20 @@ export default {
       // Um relatório específico: obter, salvar (criar/editar) ou excluir.
       const id = url.searchParams.get('id');
 
+      if (sessao.papel === 'dashboard' && (request.method !== 'GET' || id !== sessao.relatorioId)) {
+        return jsonResponse({ message: 'Acesso negado' }, 403, env);
+      }
+      if (sessao.papel === 'cliente' && request.method !== 'GET') {
+        return jsonResponse({ message: 'Acesso negado' }, 403, env);
+      }
+
       if (request.method === 'GET') {
         if (!id) return jsonResponse({ message: 'Parâmetro "id" obrigatório' }, 400, env);
         const relatorio = await env.CM_DATA.get(`relatorio_${id}`, 'json');
         if (!relatorio) return jsonResponse({ message: 'Relatório não encontrado' }, 404, env);
+        if (sessao.papel === 'cliente' && (relatorio.clienteId !== sessao.clienteId || relatorio.ativo === false)) {
+          return jsonResponse({ message: 'Relatório não encontrado' }, 404, env);
+        }
         return jsonResponse(relatorio, 200, env);
       }
 
@@ -348,9 +493,10 @@ export default {
       return jsonResponse(salvo ?? PADRAO[tipo], 200, env);
     }
 
-    // Gravação exige usuário/senha.
+    // Gravação exige login de administrador.
     if (request.method === 'PUT') {
-      if (!autenticado(request, env)) {
+      const sessaoArquivo = await autenticarSessao(request, env);
+      if (!sessaoArquivo || sessaoArquivo.papel !== 'admin') {
         return jsonResponse({ message: 'Usuário ou senha inválidos' }, 401, env);
       }
       let payload;

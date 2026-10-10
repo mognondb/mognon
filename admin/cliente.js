@@ -6,6 +6,7 @@
   const config = { apiUrl: API_URL };
 
   let authHeader = sessionStorage.getItem('cm_admin_auth') || '';
+  let papelSessao = sessionStorage.getItem('cm_admin_papel') || 'admin';
 
   const params = new URLSearchParams(location.search);
   const clienteId = params.get('id');
@@ -61,9 +62,18 @@
       const res = await fetch(`${config.apiUrl}/api/login`, { headers: { Authorization: tentativaAuth } });
       if (res.status === 401) throw new Error('Usuário ou senha inválidos.');
       if (!res.ok) throw new Error(`Não foi possível falar com o servidor (HTTP ${res.status}).`);
+      const dadosSessao = await res.json().catch(() => ({}));
+      if (dadosSessao.papel === 'cliente' && dadosSessao.clienteId !== clienteId) {
+        throw new Error('Este usuário não tem acesso a esta pasta de cliente.');
+      }
+      if (dadosSessao.papel === 'dashboard') {
+        throw new Error('Este usuário só tem acesso a um relatório específico, não a esta pasta.');
+      }
 
       authHeader = tentativaAuth;
+      papelSessao = dadosSessao.papel || 'admin';
       sessionStorage.setItem('cm_admin_auth', authHeader);
+      sessionStorage.setItem('cm_admin_papel', papelSessao);
       loginScreen.hidden = true;
       await iniciar();
     } catch (err) {
@@ -80,6 +90,7 @@
   document.getElementById('btnSair').addEventListener('click', () => {
     authHeader = '';
     sessionStorage.removeItem('cm_admin_auth');
+    sessionStorage.removeItem('cm_admin_papel');
     painel.hidden = true;
     loginScreen.hidden = false;
   });
@@ -143,12 +154,18 @@
       secao.id = `painel-${tipo}`;
       secao.hidden = tipo !== 'fechamento';
 
-      secao.querySelector('[data-acao="importar"]').addEventListener('click', () => {
-        secao.querySelector('[data-acao="inputArquivo"]').click();
-      });
-      secao.querySelector('[data-acao="inputArquivo"]').addEventListener('change', (e) => handleImportar(tipo, secao, e));
-      secao.querySelector('[data-acao="modelo"]').addEventListener('click', (e) => { e.preventDefault(); baixarModelo(tipo); });
-      secao.querySelector('[data-acao="embed"]').addEventListener('click', () => abrirModalEmbed(tipo));
+      if (papelSessao === 'admin') {
+        secao.querySelector('[data-acao="importar"]').addEventListener('click', () => {
+          secao.querySelector('[data-acao="inputArquivo"]').click();
+        });
+        secao.querySelector('[data-acao="inputArquivo"]').addEventListener('change', (e) => handleImportar(tipo, secao, e));
+        secao.querySelector('[data-acao="modelo"]').addEventListener('click', (e) => { e.preventDefault(); baixarModelo(tipo); });
+        secao.querySelector('[data-acao="embed"]').addEventListener('click', () => abrirModalEmbed(tipo));
+      } else {
+        secao.querySelector('[data-acao="importar"]').hidden = true;
+        secao.querySelector('[data-acao="modelo"]').hidden = true;
+        secao.querySelector('[data-acao="embed"]').hidden = true;
+      }
       secao.querySelector('[data-acao="recarregar"]').addEventListener('click', () => carregarLista(tipo));
 
       container.appendChild(node);
@@ -207,16 +224,19 @@
           </div>
           <div class="admin-item-actions">
             <a class="btn btn-ghost btn-sm" href="relatorio.html?id=${encodeURIComponent(r.id)}" target="_blank" rel="noopener">Abrir</a>
+            ${papelSessao === 'admin' ? `
             <button class="btn btn-ghost btn-sm" data-acao="alternar-ativo">${r.ativo === false ? 'Ativar' : 'Desativar'}</button>
-            <button class="btn btn-outline btn-sm" data-acao="remover">Remover</button>
+            <button class="btn btn-outline btn-sm" data-acao="remover">Remover</button>` : ''}
           </div>
         </div>`).join('');
 
-    lista.querySelectorAll('.admin-item').forEach((el) => {
-      const id = el.dataset.id;
-      el.querySelector('[data-acao="alternar-ativo"]').addEventListener('click', () => alternarAtivo(tipo, id));
-      el.querySelector('[data-acao="remover"]').addEventListener('click', () => removerRelatorio(tipo, id));
-    });
+    if (papelSessao === 'admin') {
+      lista.querySelectorAll('.admin-item').forEach((el) => {
+        const id = el.dataset.id;
+        el.querySelector('[data-acao="alternar-ativo"]').addEventListener('click', () => alternarAtivo(tipo, id));
+        el.querySelector('[data-acao="remover"]').addEventListener('click', () => removerRelatorio(tipo, id));
+      });
+    }
   }
 
   async function alternarAtivo(tipo, id) {

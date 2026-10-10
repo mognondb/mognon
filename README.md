@@ -105,6 +105,26 @@ exigem login no servidor.
 - Esses dados ficam só no Cloudflare KV (nunca no repositório Git) — por isso nenhum
   cliente ou relatório real está versionado aqui.
 
+### Usuários com acesso limitado
+
+Além do seu login (usuário/senha configurado como secret do Worker — sempre com
+acesso total), a aba **"Usuários"** do painel (`admin/index.html`) permite criar
+outros acessos, cada um com uma permissão:
+
+- **Administrador** — acesso total ao painel, igual ao login mestre.
+- **Cliente** — só enxerga a pasta de **um** cliente específico
+  (`admin/cliente.html?id=<id>`), em modo leitura (sem importar planilha, anexar link,
+  ativar/desativar ou remover) — útil pra dar acesso só aos relatórios já publicados
+  daquele cliente.
+- **Dashboard** — só enxerga **um** relatório específico
+  (`admin/relatorio.html?id=<id>`), em modo leitura — útil pra compartilhar o link de
+  apresentação de um fechamento/orçamento/comissão só com quem precisa ver aquele, sem
+  dar acesso a mais nada.
+
+Essas senhas ficam guardadas no Cloudflare KV com hash (PBKDF2), nunca em texto puro —
+diferente do login mestre, que continua sendo um secret do Worker. Criar, editar e
+excluir usuários exige estar logado como administrador.
+
 ## Configurações pendentes (precisam dos seus dados reais)
 
 ### 1. Formulário de contato (relatório)
