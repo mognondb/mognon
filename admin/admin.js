@@ -106,37 +106,91 @@
     return body;
   }
 
-  // ---------- Login ----------
+  // ---------- Login (usuário/senha + token do GitHub por trás) ----------
+
+  // Hash SHA-256 de "usuario:senha". A senha nunca fica em texto puro no código.
+  // Isso é uma barreira de conveniência, não segurança forte: como o site é
+  // estático (sem servidor), qualquer pessoa com conhecimento técnico pode ler
+  // este arquivo .js. Quem de fato autoriza gravações no repositório é o token
+  // do GitHub configurado abaixo, que fica só no navegador de quem acessa.
+  const CREDENCIAIS_HASH = 'cebc636714aad79882b98aac434c99e87cce7f31aa0398035f56131b2ee56507';
+
+  async function sha256Hex(texto) {
+    const dados = new TextEncoder().encode(texto);
+    const buffer = await crypto.subtle.digest('SHA-256', dados);
+    return Array.from(new Uint8Array(buffer)).map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
 
   const loginScreen = document.getElementById('loginScreen');
   const painel = document.getElementById('painel');
+  const loginForm = document.getElementById('loginForm');
+  const userInput = document.getElementById('userInput');
+  const passInput = document.getElementById('passInput');
   const tokenInput = document.getElementById('tokenInput');
   const ownerInput = document.getElementById('ownerInput');
   const repoInput = document.getElementById('repoInput');
   const branchInput = document.getElementById('branchInput');
   const loginFeedback = document.getElementById('loginFeedback');
+  const primeiroAcessoBox = document.getElementById('primeiroAcessoBox');
+  const btnEntrar = document.getElementById('btnEntrar');
 
   ownerInput.value = config.owner;
   repoInput.value = config.repo;
   branchInput.value = config.branch;
 
-  async function tentarEntrar() {
-    const token = tokenInput.value.trim();
-    if (!token) {
-      loginFeedback.textContent = 'Cole seu token de acesso do GitHub.';
+  function atualizarVisibilidadeToken() {
+    const temTokenSalvo = Boolean(config.token);
+    primeiroAcessoBox.hidden = temTokenSalvo;
+    tokenInput.required = !temTokenSalvo;
+  }
+  atualizarVisibilidadeToken();
+
+  document.getElementById('btnTrocarToken').addEventListener('click', () => {
+    primeiroAcessoBox.hidden = !primeiroAcessoBox.hidden;
+  });
+
+  let tentativasFalhas = 0;
+  let bloqueadoAte = 0;
+
+  async function tentarEntrar(e) {
+    e.preventDefault();
+
+    if (Date.now() < bloqueadoAte) {
+      const segundos = Math.ceil((bloqueadoAte - Date.now()) / 1000);
+      loginFeedback.textContent = `Muitas tentativas. Aguarde ${segundos}s e tente de novo.`;
       loginFeedback.className = 'admin-feedback error';
       return;
     }
 
-    config.token = token;
-    config.owner = ownerInput.value.trim() || 'mognondb';
-    config.repo = repoInput.value.trim() || 'mognon';
-    config.branch = branchInput.value.trim() || 'master';
-
-    loginFeedback.textContent = 'Verificando acesso...';
+    btnEntrar.disabled = true;
+    loginFeedback.textContent = 'Verificando...';
     loginFeedback.className = 'admin-feedback';
 
     try {
+      const hashDigitado = await sha256Hex(`${userInput.value.trim()}:${passInput.value}`);
+      if (hashDigitado !== CREDENCIAIS_HASH) {
+        tentativasFalhas += 1;
+        if (tentativasFalhas >= 5) {
+          bloqueadoAte = Date.now() + 30000;
+          tentativasFalhas = 0;
+          throw new Error('Muitas tentativas incorretas. Aguarde 30s e tente de novo.');
+        }
+        throw new Error('Usuário ou senha inválidos.');
+      }
+
+      const tokenDigitado = tokenInput.value.trim();
+      const token = tokenDigitado || config.token;
+      if (!token) {
+        throw new Error('Configure o token de acesso do GitHub (primeiro acesso).');
+      }
+
+      config.token = token;
+      config.owner = ownerInput.value.trim() || 'mognondb';
+      config.repo = repoInput.value.trim() || 'mognon';
+      config.branch = branchInput.value.trim() || 'master';
+
+      loginFeedback.textContent = 'Verificando acesso ao repositório...';
+
       const res = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}`, {
         headers: { Authorization: `Bearer ${config.token}`, Accept: 'application/vnd.github+json' },
       });
@@ -151,32 +205,29 @@
       localStorage.setItem(LS_REPO, config.repo);
       localStorage.setItem(LS_BRANCH, config.branch);
 
+      tentativasFalhas = 0;
       loginScreen.hidden = true;
       painel.hidden = false;
       carregarTudo();
     } catch (err) {
       loginFeedback.textContent = err.message;
       loginFeedback.className = 'admin-feedback error';
+    } finally {
+      btnEntrar.disabled = false;
     }
   }
 
-  document.getElementById('btnEntrar').addEventListener('click', tentarEntrar);
-  tokenInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') tentarEntrar(); });
+  loginForm.addEventListener('submit', tentarEntrar);
 
   document.getElementById('btnSair').addEventListener('click', () => {
-    localStorage.removeItem(LS_TOKEN);
-    config.token = '';
     painel.hidden = true;
     loginScreen.hidden = false;
+    userInput.value = '';
+    passInput.value = '';
     tokenInput.value = '';
-    tokenInput.focus();
+    atualizarVisibilidadeToken();
+    userInput.focus();
   });
-
-  // Se já existe token salvo, tenta entrar direto
-  if (config.token) {
-    tokenInput.value = config.token;
-    tentarEntrar();
-  }
 
   // ---------- Abas ----------
 

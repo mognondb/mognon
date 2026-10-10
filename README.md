@@ -33,11 +33,23 @@ Página **escondida** (não aparece no menu, bloqueada em `robots.txt`) para cad
 infoprodutos e dashboards do portfólio **sem editar código**.
 
 - Acesse `seusite.com/admin/`
-- Faça login com um **token de acesso do GitHub** (fine-grained personal access token,
-  com permissão apenas de leitura/escrita de conteúdo neste repositório). O passo a
-  passo para gerar o token está dentro da própria tela de login.
-- O token fica salvo só no navegador de quem acessou (localStorage), nunca é enviado
-  para nenhum lugar além da API do GitHub.
+- Login do dia a dia: **usuário e senha** (configurados em `admin/admin.js`, como hash,
+  não em texto puro).
+- **Primeiro acesso nesse navegador**: além de usuário/senha, é preciso colar um
+  **token de acesso do GitHub** (fine-grained personal access token, com permissão
+  apenas de leitura/escrita de conteúdo neste repositório). O passo a passo para gerar
+  o token está dentro da própria tela de login. Esse token fica salvo só naquele
+  navegador (localStorage) e não precisa ser digitado de novo nos próximos acessos —
+  só usuário e senha.
+- **Importante sobre segurança**: como este é um site estático (sem servidor próprio),
+  não existe autenticação realmente segura possível no navegador — qualquer pessoa com
+  conhecimento técnico consegue ler o `admin.js` publicado. A senha fica como hash
+  (não em texto puro) só para não aparecer "a olho nu" no código-fonte, mas isso não
+  impede um ataque deliberado. Quem de fato autoriza qualquer gravação no repositório é
+  o token do GitHub, que cada pessoa configura no próprio navegador e nunca fica
+  embutido no código. Por isso o painel também não está linkado em lugar nenhum do site
+  e é bloqueado em `robots.txt`. Para trocar a senha, gere um novo hash SHA-256 de
+  `usuario:senha` e substitua a constante `CREDENCIAIS_HASH` em `admin/admin.js`.
 - Cada "Salvar alterações" cria um commit direto nos arquivos `assets/data/*.json` do
   branch configurado (padrão: `master`) — o GitHub Pages republica o site automaticamente
   em seguida.

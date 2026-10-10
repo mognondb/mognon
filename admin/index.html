@@ -20,20 +20,39 @@
     <h1>Painel Administrativo</h1>
     <p class="admin-sub">Cadastre infoprodutos e dashboards do portfólio sem mexer em código.</p>
 
-    <label for="tokenInput">Token de acesso do GitHub</label>
-    <input type="password" id="tokenInput" placeholder="ghp_... ou github_pat_...">
-    <button class="btn btn-primary btn-block" id="btnEntrar">Entrar</button>
-    <p class="admin-feedback" id="loginFeedback" role="status"></p>
+    <form id="loginForm">
+      <label for="userInput">Usuário</label>
+      <input type="text" id="userInput" autocomplete="username" required>
 
-    <details class="admin-config">
-      <summary>Configurações avançadas (opcional)</summary>
-      <label for="ownerInput">Dono do repositório</label>
-      <input type="text" id="ownerInput" value="mognondb">
-      <label for="repoInput">Nome do repositório</label>
-      <input type="text" id="repoInput" value="mognon">
-      <label for="branchInput">Branch publicado no GitHub Pages</label>
-      <input type="text" id="branchInput" value="master">
-    </details>
+      <label for="passInput">Senha</label>
+      <input type="password" id="passInput" autocomplete="current-password" required>
+
+      <div id="primeiroAcessoBox">
+        <p class="admin-first-access-note">
+          Primeiro acesso neste navegador: configure o token de acesso do GitHub.
+          Isso só precisa ser feito uma vez aqui.
+        </p>
+        <label for="tokenInput">Token de acesso do GitHub</label>
+        <input type="password" id="tokenInput" placeholder="ghp_... ou github_pat_...">
+
+        <details class="admin-config">
+          <summary>Configurações avançadas (opcional)</summary>
+          <label for="ownerInput">Dono do repositório</label>
+          <input type="text" id="ownerInput" value="mognondb">
+          <label for="repoInput">Nome do repositório</label>
+          <input type="text" id="repoInput" value="mognon">
+          <label for="branchInput">Branch publicado no GitHub Pages</label>
+          <input type="text" id="branchInput" value="master">
+        </details>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block" id="btnEntrar">Entrar</button>
+      <p class="admin-feedback" id="loginFeedback" role="status"></p>
+
+      <p class="admin-token-change">
+        <button type="button" class="admin-link-btn" id="btnTrocarToken">Configurar/trocar token do GitHub</button>
+      </p>
+    </form>
 
     <details class="admin-help">
       <summary>Como gerar meu token de acesso?</summary>
