@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Relatório | CM Soluções Financeiras</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/style.css">
+<link rel="stylesheet" href="admin.css">
+<link rel="stylesheet" href="relatorio.css">
+</head>
+<body class="admin-body">
+
+<!-- LOGIN -->
+<div class="admin-login" id="loginScreen">
+  <div class="admin-login-box">
+    <img src="../assets/img/logo-cm.png" alt="CM Soluções Financeiras" class="admin-logo">
+    <h1>Relatório de Fechamento</h1>
+    <p class="admin-sub">Área restrita — acesso só para a equipe CM.</p>
+
+    <form id="loginForm">
+      <label for="userInput">Usuário</label>
+      <input type="text" id="userInput" autocomplete="username" required>
+      <label for="passInput">Senha</label>
+      <input type="password" id="passInput" autocomplete="current-password" required>
+      <button type="submit" class="btn btn-primary btn-block" id="btnEntrar">Entrar</button>
+      <p class="admin-feedback" id="loginFeedback" role="status"></p>
+    </form>
+  </div>
+</div>
+
+<!-- LISTA (quando acessado sem ?id=) -->
+<div class="rel-lista-wrap" id="listaWrap" hidden>
+  <div class="rel-lista-box">
+    <img src="../assets/img/logo-cm.png" alt="CM" class="admin-logo-sm">
+    <h1>Relatórios de Fechamento</h1>
+    <p class="admin-sub">Escolha um relatório para abrir a apresentação.</p>
+    <div id="listaRelatorios"><p class="loading-placeholder">Carregando...</p></div>
+    <p class="rel-lista-voltar"><a href="index.html">← Voltar ao painel administrativo</a></p>
+  </div>
+</div>
+
+<!-- APRESENTAÇÃO -->
+<div class="rel-app" id="relApp" hidden>
+  <nav class="rel-nav" id="relNav">
+    <div class="rel-nav-topo">
+      <img src="../assets/img/logo-cm.png" alt="CM" class="rel-nav-logo">
+      <div>
+        <p class="rel-nav-cliente" id="navCliente">—</p>
+        <p class="rel-nav-periodo" id="navPeriodo">—</p>
+      </div>
+    </div>
+    <ul class="rel-nav-lista" id="navLista"></ul>
+    <a href="index.html" class="rel-nav-voltar">← Painel admin</a>
+  </nav>
+
+  <main class="rel-main" id="relMain">
+    <!-- seções inseridas via JS -->
+  </main>
+</div>
+
+<script src="relatorio.js"></script>
+</body>
+</html>

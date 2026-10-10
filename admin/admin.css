@@ -196,6 +196,13 @@
   max-height: 90vh;
   overflow-y: auto;
 }
+.admin-modal-box-wide { max-width: 720px; }
+.admin-modal-box .subtitulo-sm {
+  margin-top: 26px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border);
+}
+.admin-modal-box .subtitulo-sm:first-of-type { margin-top: 10px; border-top: none; padding-top: 0; }
 .admin-modal-box h2 { font-size: 1.3rem; margin-bottom: 18px; }
 .admin-modal-box label {
   display: block;

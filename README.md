@@ -14,6 +14,7 @@ assets/downloads/           Planilhas gratuitas (CSV) disponíveis para download
 assets/img/                 Logo e imagens
 admin/                      Painel administrativo (escondido, não linkado no site)
 admin/worker.js             Código do servidor (Cloudflare Worker) usado pelo painel
+admin/relatorio.html(.js/.css)  Apresentação de relatórios de fechamento por cliente
 admin/README-servidor.md    Passo a passo para publicar o servidor
 robots.txt                  Bloqueia indexação de /admin/ por buscadores
 legacy-jekyll-boilerplate/  Arquivos antigos do scaffold padrão do GitHub Pages (não usados)
@@ -61,6 +62,26 @@ O painel não aparece no menu do site e é bloqueado em `robots.txt`, mas isso �
 não aparecer em buscas — quem de fato impede alguém de salvar algo é o usuário/senha
 verificado pelo servidor.
 
+### Relatórios de fechamento por cliente (apresentação ao vivo)
+
+Uma terceira aba do painel, **"Relatórios de Clientes"**, guarda os fechamentos
+mensais (ex.: Instituto Luanda, Setembro/2026) para apresentar ao cliente numa
+reunião. Diferente dos infoprodutos/dashboards do portfólio, **esses dados nunca
+são públicos**: tanto a leitura quanto a gravação exigem login no servidor.
+
+- **Criar um relatório sem código**: pelo formulário (campos de lista usam uma
+  linha por item, colunas separadas por `|`), ou importando uma planilha `.xlsx`
+  no modelo próprio — botão **"Baixar modelo"** no painel gera esse arquivo.
+  Depois de importar, revise os campos antes de salvar.
+- **Apresentar ao cliente**: cada relatório salvo ganha uma página própria em
+  `admin/relatorio.html?id=<id>` (link "Abrir" na lista do painel) — um dashboard
+  navegável por seções (resumo executivo, indicadores, formação do caixa, receita,
+  despesas, produção por profissional, contas, pendências, próximos passos),
+  pronta pra usar numa tela/projeção durante a reunião. Pede login própria (mesmo
+  usuário/senha do painel).
+- Esses dados ficam só no Cloudflare KV (nunca no repositório Git) — por isso
+  nenhum relatório real está versionado aqui.
+
 ## Configurações pendentes (precisam dos seus dados reais)
 
 ### 1. Formulário de contato (relatório)
@@ -88,6 +109,11 @@ de `index.html` (atualmente com valores de exemplo).
 Siga `admin/README-servidor.md` para publicar o Cloudflare Worker que autentica o
 painel e guarda os dados (gratuito, ~5 min, sem token nenhum). Sem isso, o painel
 fica no ar mas não consegue carregar nem salvar nada.
+
+**Se você já tinha publicado o Worker antes:** o `admin/worker.js` ganhou as rotas de
+relatórios (`/api/relatorios`, `/api/relatorio`) — copie o conteúdo atualizado do
+arquivo para o Worker no Cloudflare (Edit code → colar → Save and Deploy). Nenhuma
+variável nova é necessária, reaproveita `ADMIN_USER`/`ADMIN_PASS`/`CM_DATA`.
 
 ### 5. Site público mostrar os dados em tempo real (opcional)
 Por padrão o site lê `assets/data/*.json` (arquivos fixos). Depois de publicar o

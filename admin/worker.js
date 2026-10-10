@@ -114,9 +114,20 @@ const PADRAO = {
 function corsHeaders(env) {
   return {
     'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',
-    'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Authorization, Content-Type',
   };
+}
+
+function slugify(str) {
+  return (str || '')
+    .toString()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
 }
 
 function jsonResponse(body, status, env) {
@@ -155,6 +166,67 @@ export default {
       return autenticado(request, env)
         ? jsonResponse({ ok: true }, 200, env)
         : jsonResponse({ message: 'Usuário ou senha inválidos' }, 401, env);
+    }
+
+    // Relatórios (dashboards de apresentação para clientes): sempre exigem login,
+    // tanto pra ler quanto pra gravar — são dados financeiros sensíveis de clientes,
+    // diferente dos infoprodutos/dashboards do portfólio (que são públicos).
+    if (url.pathname === '/api/relatorios' || url.pathname === '/api/relatorio') {
+      if (!autenticado(request, env)) {
+        return jsonResponse({ message: 'Usuário ou senha inválidos' }, 401, env);
+      }
+
+      // Lista resumida (id, cliente, período) para a tela de listagem do painel.
+      if (url.pathname === '/api/relatorios') {
+        if (request.method !== 'GET') return jsonResponse({ message: 'Método não suportado' }, 405, env);
+        const indice = (await env.CM_DATA.get('relatorios_index', 'json')) || [];
+        return jsonResponse(indice, 200, env);
+      }
+
+      // Um relatório específico: obter, salvar (criar/editar) ou excluir.
+      const id = url.searchParams.get('id');
+
+      if (request.method === 'GET') {
+        if (!id) return jsonResponse({ message: 'Parâmetro "id" obrigatório' }, 400, env);
+        const relatorio = await env.CM_DATA.get(`relatorio_${id}`, 'json');
+        if (!relatorio) return jsonResponse({ message: 'Relatório não encontrado' }, 404, env);
+        return jsonResponse(relatorio, 200, env);
+      }
+
+      if (request.method === 'PUT') {
+        let relatorio;
+        try {
+          relatorio = await request.json();
+        } catch {
+          return jsonResponse({ message: 'JSON inválido' }, 400, env);
+        }
+        if (!relatorio.cliente || !relatorio.periodo) {
+          return jsonResponse({ message: 'Informe ao menos cliente e período' }, 400, env);
+        }
+        const idFinal = relatorio.id || slugify(`${relatorio.cliente}-${relatorio.periodo}`);
+        relatorio.id = idFinal;
+        relatorio.atualizadoEm = new Date().toISOString();
+
+        await env.CM_DATA.put(`relatorio_${idFinal}`, JSON.stringify(relatorio));
+
+        const indice = (await env.CM_DATA.get('relatorios_index', 'json')) || [];
+        const resumo = { id: idFinal, cliente: relatorio.cliente, periodo: relatorio.periodo, atualizadoEm: relatorio.atualizadoEm };
+        const posicao = indice.findIndex((r) => r.id === idFinal);
+        if (posicao >= 0) indice[posicao] = resumo; else indice.push(resumo);
+        await env.CM_DATA.put('relatorios_index', JSON.stringify(indice));
+
+        return jsonResponse(relatorio, 200, env);
+      }
+
+      if (request.method === 'DELETE') {
+        if (!id) return jsonResponse({ message: 'Parâmetro "id" obrigatório' }, 400, env);
+        await env.CM_DATA.delete(`relatorio_${id}`);
+        const indice = ((await env.CM_DATA.get('relatorios_index', 'json')) || []).filter((r) => r.id !== id);
+        await env.CM_DATA.put('relatorios_index', JSON.stringify(indice));
+        return jsonResponse({ ok: true }, 200, env);
+      }
+
+      return jsonResponse({ message: 'Método não suportado' }, 405, env);
     }
 
     if (url.pathname !== '/api/file') {

@@ -2,7 +2,8 @@
 
 O painel em `/admin/` precisa de um pequeno servidor para funcionar com segurança:
 ele guarda o usuário/senha do lado do servidor (nunca no navegador) e guarda os
-dados dos infoprodutos e dashboards num banco de dados do próprio Cloudflare.
+dados dos infoprodutos, dashboards do portfólio e relatórios de fechamento por
+cliente num banco de dados do próprio Cloudflare.
 
 Esse servidor é um **Cloudflare Worker** — gratuito, sem cartão de crédito, **sem
 precisar gerar token nenhum**. Leva uns 5 minutos. O código já está pronto em
