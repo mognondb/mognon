@@ -1,20 +1,17 @@
 (function () {
   'use strict';
 
-  const LS_TOKEN = 'cm_admin_token';
-  const LS_OWNER = 'cm_admin_owner';
-  const LS_REPO = 'cm_admin_repo';
-  const LS_BRANCH = 'cm_admin_branch';
-
-  const PATH_INFOPRODUTOS = 'assets/data/infoprodutos.json';
-  const PATH_DASHBOARDS = 'assets/data/dashboards.json';
+  const LS_API_URL = 'cm_admin_api_url';
+  const TIPOS = ['infoprodutos', 'dashboards'];
 
   let config = {
-    token: localStorage.getItem(LS_TOKEN) || '',
-    owner: localStorage.getItem(LS_OWNER) || 'mognondb',
-    repo: localStorage.getItem(LS_REPO) || 'mognon',
-    branch: localStorage.getItem(LS_BRANCH) || 'master',
+    apiUrl: localStorage.getItem(LS_API_URL) || '',
   };
+
+  // Credenciais ficam só na memória da aba (sessionStorage): somem ao fechar a
+  // aba/navegador. O servidor (Cloudflare Worker) é quem de fato valida usuário
+  // e senha e guarda o token do GitHub — nada disso fica no código deste site.
+  let authHeader = sessionStorage.getItem('cm_admin_auth') || '';
 
   const state = {
     infoprodutos: { items: [], sha: null, dirty: false, editId: null },
@@ -44,110 +41,48 @@
     return candidato;
   }
 
-  function toBase64(str) {
-    const bytes = new TextEncoder().encode(str);
-    let binary = '';
-    bytes.forEach((b) => { binary += String.fromCharCode(b); });
-    return btoa(binary);
-  }
-
-  function fromBase64(b64) {
-    const binary = atob((b64 || '').replace(/\n/g, ''));
-    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
-    return new TextDecoder().decode(bytes);
-  }
-
   function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str ?? '';
     return div.innerHTML;
   }
 
-  function apiUrl(path) {
-    return `https://api.github.com/repos/${config.owner}/${config.repo}/contents/${path}`;
-  }
+  function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
-  async function ghGetFile(path) {
-    const res = await fetch(`${apiUrl(path)}?ref=${encodeURIComponent(config.branch)}`, {
-      headers: {
-        Authorization: `Bearer ${config.token}`,
-        Accept: 'application/vnd.github+json',
-      },
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.message || `Erro ao carregar ${path} (HTTP ${res.status})`);
-    }
-    const data = await res.json();
-    const conteudo = fromBase64(data.content);
-    return { json: JSON.parse(conteudo), sha: data.sha };
-  }
+  // ---------- Chamadas ao servidor (Cloudflare Worker) ----------
 
-  async function ghPutFile(path, jsonObj, sha, mensagem) {
-    const conteudo = toBase64(JSON.stringify(jsonObj, null, 2) + '\n');
-    const res = await fetch(apiUrl(path), {
-      method: 'PUT',
-      headers: {
-        Authorization: `Bearer ${config.token}`,
-        Accept: 'application/vnd.github+json',
-      },
-      body: JSON.stringify({
-        message: mensagem,
-        content: conteudo,
-        sha,
-        branch: config.branch,
-      }),
+  async function apiGetFile(tipo) {
+    const res = await fetch(`${config.apiUrl}/api/file?path=${tipo}`, {
+      headers: { Authorization: authHeader },
     });
     const body = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      const base = body.message || 'Erro ao salvar';
-      throw new Error(`${base} (HTTP ${res.status})`);
-    }
-    return body;
+    if (!res.ok) throw new Error(body.message || `Erro ao carregar ${tipo} (HTTP ${res.status})`);
+    return body; // { json, sha }
   }
 
-  // ---------- Login (usuário/senha + token do GitHub por trás) ----------
-
-  // Hash SHA-256 de "usuario:senha". A senha nunca fica em texto puro no código.
-  // Isso é uma barreira de conveniência, não segurança forte: como o site é
-  // estático (sem servidor), qualquer pessoa com conhecimento técnico pode ler
-  // este arquivo .js. Quem de fato autoriza gravações no repositório é o token
-  // do GitHub configurado abaixo, que fica só no navegador de quem acessa.
-  const CREDENCIAIS_HASH = 'cebc636714aad79882b98aac434c99e87cce7f31aa0398035f56131b2ee56507';
-
-  async function sha256Hex(texto) {
-    const dados = new TextEncoder().encode(texto);
-    const buffer = await crypto.subtle.digest('SHA-256', dados);
-    return Array.from(new Uint8Array(buffer)).map((b) => b.toString(16).padStart(2, '0')).join('');
+  async function apiPutFile(tipo, dados, sha) {
+    const res = await fetch(`${config.apiUrl}/api/file?path=${tipo}`, {
+      method: 'PUT',
+      headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: dados, sha }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.message || `Erro ao salvar ${tipo} (HTTP ${res.status})`);
+    return body; // { sha }
   }
+
+  // ---------- Login ----------
 
   const loginScreen = document.getElementById('loginScreen');
   const painel = document.getElementById('painel');
   const loginForm = document.getElementById('loginForm');
   const userInput = document.getElementById('userInput');
   const passInput = document.getElementById('passInput');
-  const tokenInput = document.getElementById('tokenInput');
-  const ownerInput = document.getElementById('ownerInput');
-  const repoInput = document.getElementById('repoInput');
-  const branchInput = document.getElementById('branchInput');
+  const apiUrlInput = document.getElementById('apiUrlInput');
   const loginFeedback = document.getElementById('loginFeedback');
-  const primeiroAcessoBox = document.getElementById('primeiroAcessoBox');
   const btnEntrar = document.getElementById('btnEntrar');
 
-  ownerInput.value = config.owner;
-  repoInput.value = config.repo;
-  branchInput.value = config.branch;
-
-  function atualizarVisibilidadeToken() {
-    const temTokenSalvo = Boolean(config.token);
-    primeiroAcessoBox.hidden = temTokenSalvo;
-    tokenInput.required = !temTokenSalvo;
-  }
-  atualizarVisibilidadeToken();
-
-  document.getElementById('btnTrocarToken').addEventListener('click', () => {
-    primeiroAcessoBox.hidden = !primeiroAcessoBox.hidden;
-  });
+  apiUrlInput.value = config.apiUrl;
 
   let tentativasFalhas = 0;
   let bloqueadoAte = 0;
@@ -162,13 +97,26 @@
       return;
     }
 
+    const apiUrl = apiUrlInput.value.trim().replace(/\/+$/, '');
+    if (!apiUrl) {
+      loginFeedback.textContent = 'Configure o endereço do servidor em "Configurações do servidor" (veja admin/README-servidor.md).';
+      loginFeedback.className = 'admin-feedback error';
+      return;
+    }
+
     btnEntrar.disabled = true;
     loginFeedback.textContent = 'Verificando...';
     loginFeedback.className = 'admin-feedback';
 
+    config.apiUrl = apiUrl;
+    const tentativaAuth = `Basic ${btoa(`${userInput.value.trim()}:${passInput.value}`)}`;
+
     try {
-      const hashDigitado = await sha256Hex(`${userInput.value.trim()}:${passInput.value}`);
-      if (hashDigitado !== CREDENCIAIS_HASH) {
+      const res = await fetch(`${config.apiUrl}/api/file?path=infoprodutos`, {
+        headers: { Authorization: tentativaAuth },
+      });
+
+      if (res.status === 401) {
         tentativasFalhas += 1;
         if (tentativasFalhas >= 5) {
           bloqueadoAte = Date.now() + 30000;
@@ -177,40 +125,23 @@
         }
         throw new Error('Usuário ou senha inválidos.');
       }
-
-      const tokenDigitado = tokenInput.value.trim();
-      const token = tokenDigitado || config.token;
-      if (!token) {
-        throw new Error('Configure o token de acesso do GitHub (primeiro acesso).');
-      }
-
-      config.token = token;
-      config.owner = ownerInput.value.trim() || 'mognondb';
-      config.repo = repoInput.value.trim() || 'mognon';
-      config.branch = branchInput.value.trim() || 'master';
-
-      loginFeedback.textContent = 'Verificando acesso ao repositório...';
-
-      const res = await fetch(`https://api.github.com/repos/${config.owner}/${config.repo}`, {
-        headers: { Authorization: `Bearer ${config.token}`, Accept: 'application/vnd.github+json' },
-      });
       if (!res.ok) {
-        throw new Error(res.status === 401 || res.status === 403
-          ? 'Token inválido ou sem permissão para este repositório.'
-          : `Não foi possível acessar o repositório (HTTP ${res.status}).`);
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || `Não foi possível falar com o servidor (HTTP ${res.status}).`);
       }
 
-      localStorage.setItem(LS_TOKEN, config.token);
-      localStorage.setItem(LS_OWNER, config.owner);
-      localStorage.setItem(LS_REPO, config.repo);
-      localStorage.setItem(LS_BRANCH, config.branch);
+      authHeader = tentativaAuth;
+      sessionStorage.setItem('cm_admin_auth', authHeader);
+      localStorage.setItem(LS_API_URL, config.apiUrl);
 
       tentativasFalhas = 0;
       loginScreen.hidden = true;
       painel.hidden = false;
       carregarTudo();
     } catch (err) {
-      loginFeedback.textContent = err.message;
+      loginFeedback.textContent = err.message.includes('fetch')
+        ? 'Não foi possível conectar ao servidor. Confira o endereço configurado.'
+        : err.message;
       loginFeedback.className = 'admin-feedback error';
     } finally {
       btnEntrar.disabled = false;
@@ -220,14 +151,28 @@
   loginForm.addEventListener('submit', tentarEntrar);
 
   document.getElementById('btnSair').addEventListener('click', () => {
+    authHeader = '';
+    sessionStorage.removeItem('cm_admin_auth');
     painel.hidden = true;
     loginScreen.hidden = false;
-    userInput.value = '';
     passInput.value = '';
-    tokenInput.value = '';
-    atualizarVisibilidadeToken();
     userInput.focus();
   });
+
+  // Se já existe uma sessão ativa nesta aba (ex: recarregou a página), reentra direto
+  if (authHeader && config.apiUrl) {
+    fetch(`${config.apiUrl}/api/file?path=infoprodutos`, { headers: { Authorization: authHeader } })
+      .then((res) => {
+        if (res.ok) {
+          loginScreen.hidden = true;
+          painel.hidden = false;
+          carregarTudo();
+        } else {
+          sessionStorage.removeItem('cm_admin_auth');
+        }
+      })
+      .catch(() => {});
+  }
 
   // ---------- Abas ----------
 
@@ -241,23 +186,21 @@
   });
 
   function carregarTudo() {
-    carregarLista('infoprodutos', PATH_INFOPRODUTOS);
-    carregarLista('dashboards', PATH_DASHBOARDS);
+    TIPOS.forEach(carregarLista);
   }
 
   // ---------- Carregar / Renderizar listas ----------
 
-  async function carregarLista(tipo, path) {
+  async function carregarLista(tipo) {
     const lista = document.getElementById(`lista${capitalize(tipo)}`);
     const feedback = document.getElementById(`feedback${capitalize(tipo)}`);
     lista.innerHTML = '<p class="loading-placeholder">Carregando...</p>';
     feedback.textContent = '';
     feedback.className = 'admin-feedback';
     try {
-      const { json, sha } = await ghGetFile(path);
+      const { json, sha } = await apiGetFile(tipo);
       state[tipo].items = json;
       state[tipo].sha = sha;
-      state[tipo].dirty = false;
       marcarDirty(tipo, false);
       renderLista(tipo);
     } catch (err) {
@@ -266,8 +209,6 @@
       feedback.className = 'admin-feedback error';
     }
   }
-
-  function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
   function marcarDirty(tipo, valor) {
     state[tipo].dirty = valor;
@@ -337,25 +278,20 @@
 
   document.getElementById('btnRecarregarInfoprodutos').addEventListener('click', () => {
     if (state.infoprodutos.dirty && !confirm('Isso descarta suas alterações não salvas. Continuar?')) return;
-    carregarLista('infoprodutos', PATH_INFOPRODUTOS);
+    carregarLista('infoprodutos');
   });
   document.getElementById('btnRecarregarDashboards').addEventListener('click', () => {
     if (state.dashboards.dirty && !confirm('Isso descarta suas alterações não salvas. Continuar?')) return;
-    carregarLista('dashboards', PATH_DASHBOARDS);
+    carregarLista('dashboards');
   });
 
-  async function salvar(tipo, path) {
+  async function salvar(tipo) {
     const feedback = document.getElementById(`feedback${capitalize(tipo)}`);
     feedback.textContent = 'Salvando...';
     feedback.className = 'admin-feedback';
     try {
-      const resultado = await ghPutFile(
-        path,
-        state[tipo].items,
-        state[tipo].sha,
-        `Atualiza ${tipo} via painel administrativo`
-      );
-      state[tipo].sha = resultado.content.sha;
+      const resultado = await apiPutFile(tipo, state[tipo].items, state[tipo].sha);
+      state[tipo].sha = resultado.sha;
       marcarDirty(tipo, false);
       feedback.textContent = 'Alterações salvas! O site será atualizado em poucos minutos.';
       feedback.className = 'admin-feedback success';
@@ -365,8 +301,8 @@
     }
   }
 
-  document.getElementById('btnSalvarInfoprodutos').addEventListener('click', () => salvar('infoprodutos', PATH_INFOPRODUTOS));
-  document.getElementById('btnSalvarDashboards').addEventListener('click', () => salvar('dashboards', PATH_DASHBOARDS));
+  document.getElementById('btnSalvarInfoprodutos').addEventListener('click', () => salvar('infoprodutos'));
+  document.getElementById('btnSalvarDashboards').addEventListener('click', () => salvar('dashboards'));
 
   // ---------- Modal Infoproduto ----------
 

@@ -27,43 +27,25 @@
       <label for="passInput">Senha</label>
       <input type="password" id="passInput" autocomplete="current-password" required>
 
-      <div id="primeiroAcessoBox">
-        <p class="admin-first-access-note">
-          Primeiro acesso neste navegador: configure o token de acesso do GitHub.
-          Isso só precisa ser feito uma vez aqui.
-        </p>
-        <label for="tokenInput">Token de acesso do GitHub</label>
-        <input type="password" id="tokenInput" placeholder="ghp_... ou github_pat_...">
-
-        <details class="admin-config">
-          <summary>Configurações avançadas (opcional)</summary>
-          <label for="ownerInput">Dono do repositório</label>
-          <input type="text" id="ownerInput" value="mognondb">
-          <label for="repoInput">Nome do repositório</label>
-          <input type="text" id="repoInput" value="mognon">
-          <label for="branchInput">Branch publicado no GitHub Pages</label>
-          <input type="text" id="branchInput" value="master">
-        </details>
-      </div>
-
       <button type="submit" class="btn btn-primary btn-block" id="btnEntrar">Entrar</button>
       <p class="admin-feedback" id="loginFeedback" role="status"></p>
 
-      <p class="admin-token-change">
-        <button type="button" class="admin-link-btn" id="btnTrocarToken">Configurar/trocar token do GitHub</button>
-      </p>
+      <details class="admin-config">
+        <summary>Configurações do servidor (só na primeira vez)</summary>
+        <label for="apiUrlInput">Endereço do servidor (Cloudflare Worker)</label>
+        <input type="text" id="apiUrlInput" placeholder="https://cm-admin-api.SEUUSUARIO.workers.dev">
+      </details>
     </form>
 
     <details class="admin-help">
-      <summary>Como gerar meu token de acesso?</summary>
-      <ol>
-        <li>Acesse <strong>github.com → foto do perfil → Settings</strong></li>
-        <li>No menu lateral, vá em <strong>Developer settings → Personal access tokens → Fine-grained tokens</strong></li>
-        <li>Clique em <strong>Generate new token</strong></li>
-        <li>Em "Repository access", escolha <strong>Only select repositories</strong> e selecione este repositório (<code>mognon</code>)</li>
-        <li>Em "Permissions → Repository permissions", defina <strong>Contents: Read and write</strong></li>
-        <li>Gere o token e cole aqui em cima — ele fica salvo só neste navegador, nunca é enviado para mais ninguém além do GitHub</li>
-      </ol>
+      <summary>Ainda não configurei o servidor — como faço?</summary>
+      <p>
+        O usuário e senha agora são verificados por um pequeno servidor (Cloudflare
+        Worker), que guarda essas credenciais e o token do GitHub de forma segura —
+        nenhum dos dois fica exposto no código do site. Siga o passo a passo em
+        <code>admin/README-servidor.md</code> no repositório para publicar o servidor
+        (leva uns 10 minutos, é gratuito) e depois cole o endereço dele aqui em cima.
+      </p>
     </details>
   </div>
 </div>

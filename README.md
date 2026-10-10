@@ -13,6 +13,8 @@ assets/data/dashboards.json    Dados do portfólio de dashboards (cadastrados vi
 assets/downloads/           Planilhas gratuitas (CSV) disponíveis para download
 assets/img/                 Logo e imagens
 admin/                      Painel administrativo (escondido, não linkado no site)
+admin/worker.js             Código do servidor (Cloudflare Worker) usado pelo painel
+admin/README-servidor.md    Passo a passo para publicar o servidor
 robots.txt                  Bloqueia indexação de /admin/ por buscadores
 legacy-jekyll-boilerplate/  Arquivos antigos do scaffold padrão do GitHub Pages (não usados)
 .nojekyll                   Desativa o processamento Jekyll para servir os arquivos como estão
@@ -33,26 +35,17 @@ Página **escondida** (não aparece no menu, bloqueada em `robots.txt`) para cad
 infoprodutos e dashboards do portfólio **sem editar código**.
 
 - Acesse `seusite.com/admin/`
-- Login do dia a dia: **usuário e senha** (configurados em `admin/admin.js`, como hash,
-  não em texto puro).
-- **Primeiro acesso nesse navegador**: além de usuário/senha, é preciso colar um
-  **token de acesso do GitHub** (fine-grained personal access token, com permissão
-  apenas de leitura/escrita de conteúdo neste repositório). O passo a passo para gerar
-  o token está dentro da própria tela de login. Esse token fica salvo só naquele
-  navegador (localStorage) e não precisa ser digitado de novo nos próximos acessos —
-  só usuário e senha.
-- **Importante sobre segurança**: como este é um site estático (sem servidor próprio),
-  não existe autenticação realmente segura possível no navegador — qualquer pessoa com
-  conhecimento técnico consegue ler o `admin.js` publicado. A senha fica como hash
-  (não em texto puro) só para não aparecer "a olho nu" no código-fonte, mas isso não
-  impede um ataque deliberado. Quem de fato autoriza qualquer gravação no repositório é
-  o token do GitHub, que cada pessoa configura no próprio navegador e nunca fica
-  embutido no código. Por isso o painel também não está linkado em lugar nenhum do site
-  e é bloqueado em `robots.txt`. Para trocar a senha, gere um novo hash SHA-256 de
-  `usuario:senha` e substitua a constante `CREDENCIAIS_HASH` em `admin/admin.js`.
-- Cada "Salvar alterações" cria um commit direto nos arquivos `assets/data/*.json` do
-  branch configurado (padrão: `master`) — o GitHub Pages republica o site automaticamente
-  em seguida.
+- Login: **usuário e senha**, verificados por um servidor próprio (Cloudflare Worker,
+  gratuito) — veja **`admin/README-servidor.md`** para o passo a passo de publicá-lo
+  (uma vez só, leva uns 10 minutos).
+- O servidor guarda o usuário/senha e o token do GitHub como segredos — nenhum dos
+  dois fica no código do site. O navegador só envia usuário/senha a cada chamada; é o
+  servidor quem decide se autoriza e fala com a API do GitHub.
+- Depois de configurado, o navegador lembra o endereço do servidor; o login do dia a
+  dia é só usuário e senha.
+- Cada "Salvar alterações" faz o servidor commitar direto nos arquivos
+  `assets/data/*.json` do branch configurado — o GitHub Pages republica o site
+  automaticamente em seguida.
 - **Infoprodutos grátis**: o campo "link" deve apontar para um arquivo já existente em
   `assets/downloads/`. Para adicionar um arquivo novo, é preciso subir ele no repositório
   (o painel ainda não faz upload de arquivo).
@@ -61,9 +54,9 @@ infoprodutos e dashboards do portfólio **sem editar código**.
 - **Dashboards**: cada item usa um mini-preview em CSS (barras ou donut) com dados
   fictícios configuráveis — não são capturas de tela reais.
 
-> Importante: "escondida" aqui significa não-indexada e não-linkada, não autenticação
-> forte. Quem tiver a URL consegue ver a tela de login, mas só consegue salvar algo se
-> tiver um token válido com permissão no repositório.
+O painel não aparece no menu do site e é bloqueado em `robots.txt`, mas isso é só para
+não aparecer em buscas — quem de fato impede alguém de salvar algo é o usuário/senha
+verificado pelo servidor.
 
 ## Configurações pendentes (precisam dos seus dados reais)
 
@@ -88,10 +81,10 @@ Os infoprodutos pagos em `assets/data/infoprodutos.json` estão com
 Atualize e-mail, WhatsApp, CNPJ e horário de atendimento no rodapé e na seção de contato
 de `index.html` (atualmente com valores de exemplo).
 
-### 4. Branch do GitHub Pages
-O painel `/admin/` assume por padrão que o GitHub Pages publica a branch `master`. Se o
-Pages deste repositório estiver configurado para outra branch, ajuste o campo "Branch
-publicado no GitHub Pages" na tela de login do admin (fica salvo no navegador).
+### 4. Servidor do painel administrativo
+Siga `admin/README-servidor.md` para publicar o Cloudflare Worker que autentica o
+painel e fala com a API do GitHub. Sem isso, o painel fica no ar mas não consegue
+carregar nem salvar nada.
 
 ## Publicação
 
