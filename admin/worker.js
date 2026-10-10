@@ -246,8 +246,10 @@ export default {
       if (url.pathname === '/api/relatorios') {
         if (request.method !== 'GET') return jsonResponse({ message: 'Método não suportado' }, 405, env);
         const clienteId = url.searchParams.get('clienteId');
+        const tipo = url.searchParams.get('tipo');
         let indice = (await env.CM_DATA.get('relatorios_index', 'json')) || [];
         if (clienteId) indice = indice.filter((r) => r.clienteId === clienteId);
+        if (tipo) indice = indice.filter((r) => r.tipo === tipo);
         return jsonResponse(indice, 200, env);
       }
 
@@ -268,12 +270,17 @@ export default {
         } catch {
           return jsonResponse({ message: 'JSON inválido' }, 400, env);
         }
-        if (!relatorio.clienteId || !relatorio.periodo) {
-          return jsonResponse({ message: 'Informe ao menos o cliente e o período' }, 400, env);
+        const tiposValidos = ['fechamento', 'orcamento', 'comissoes'];
+        if (!relatorio.clienteId || !relatorio.periodo || !tiposValidos.includes(relatorio.tipo)) {
+          return jsonResponse({ message: 'Informe o cliente, o período e um tipo válido (fechamento, orcamento ou comissoes)' }, 400, env);
         }
-        const idFinal = relatorio.id || slugify(`${relatorio.clienteId}-${relatorio.periodo}`);
+        if (relatorio.modo === 'embed' && !relatorio.embedUrl) {
+          return jsonResponse({ message: 'Informe o link do dashboard (Power BI / Looker Studio)' }, 400, env);
+        }
+        const idFinal = relatorio.id || slugify(`${relatorio.clienteId}-${relatorio.tipo}-${relatorio.periodo}`);
         relatorio.id = idFinal;
         if (relatorio.ativo == null) relatorio.ativo = true;
+        if (!relatorio.modo) relatorio.modo = 'importado';
         relatorio.atualizadoEm = new Date().toISOString();
 
         await env.CM_DATA.put(`relatorio_${idFinal}`, JSON.stringify(relatorio));
@@ -283,6 +290,8 @@ export default {
           id: idFinal,
           clienteId: relatorio.clienteId,
           cliente: relatorio.cliente,
+          tipo: relatorio.tipo,
+          modo: relatorio.modo,
           periodo: relatorio.periodo,
           ativo: relatorio.ativo,
           atualizadoEm: relatorio.atualizadoEm,

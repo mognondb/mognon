@@ -63,29 +63,45 @@ O painel não aparece no menu do site e é bloqueado em `robots.txt`, mas isso �
 não aparecer em buscas — quem de fato impede alguém de salvar algo é o usuário/senha
 verificado pelo servidor.
 
-### Clientes e seus relatórios de fechamento (apresentação ao vivo)
+### Clientes: fechamento, orçamento e comissões (apresentação ao vivo)
 
 Uma terceira aba do painel, **"Clientes"**, funciona como uma pasta por cliente
-(`admin/cliente.html?id=<id>`): dentro de cada cliente você cadastra os relatórios de
-fechamento mensais daquele cliente (ex.: Instituto Luanda → Setembro/2026, Outubro/2026...)
-para apresentar numa reunião. Diferente dos infoprodutos/dashboards do portfólio,
-**esses dados nunca são públicos**: tanto a leitura quanto a gravação exigem login no
-servidor.
+(`admin/cliente.html?id=<id>`): dentro de cada cliente você cadastra até três tipos de
+relatório, cada um por período (ex.: Instituto Luanda → Fechamento de Setembro/2026,
+Outubro/2026...), para apresentar numa reunião. Diferente dos infoprodutos/dashboards
+do portfólio, **esses dados nunca são públicos**: tanto a leitura quanto a gravação
+exigem login no servidor.
 
 - **Aba "Clientes"** (`admin/index.html`): lista os clientes cadastrados, cria novos
   (nome + observações) e exclui (excluir um cliente apaga também todos os relatórios
   dele).
-- **Dentro de um cliente** (`admin/cliente.html?id=<id>`): lista os relatórios daquele
-  cliente, com opção de marcar cada um como ativo/inativo. Criar um relatório sem
-  código, pelo formulário (campos de lista usam uma linha por item, colunas separadas
-  por `|`) ou importando uma planilha `.xlsx` no modelo próprio — botão **"Baixar
-  modelo"** gera esse arquivo. Depois de importar, revise os campos antes de salvar.
+- **Dentro de um cliente** (`admin/cliente.html?id=<id>`): três sub-abas, uma por
+  produto —
+  1. **Fechamento Financeiro** — fechamento de caixa mensal (receitas, despesas,
+     produção por profissional e, opcionalmente, estoque — essa seção só aparece na
+     apresentação se a planilha trouxer itens).
+  2. **Acompanhamento Orçamentário** — Orçado x Realizado por categoria (só pra
+     clientes que contratam esse acompanhamento).
+  3. **Demonstrativo de Comissões** — comissão por prestador/vendedor, com o serviço
+     prestado, valor, percentual e descontos de cada lançamento; um campo "Ramo"
+     serve só de rótulo de contexto (ex.: Serviços, Comércio, Saúde).
+
+  Para cada produto, há **duas formas de alimentar o dashboard** — não existe mais
+  formulário manual:
+  - **Importar planilha (.xlsx)**: botão **"Baixar modelo"** gera o arquivo no formato
+    esperado daquele produto (abas nomeadas); depois de importar, uma prévia mostra um
+    resumo do que foi lido antes de confirmar o salvamento.
+  - **Anexar link público**: para quem já usa Power BI ou Looker Studio — cole o link
+    de **"Publicar na web" / "Embed"** (não o link comum de acesso) e a apresentação
+    mostra o dashboard embutido num iframe.
+
+  Cada relatório importado ou anexado pode ser marcado como ativo/inativo e removido.
 - **Apresentar ao cliente**: cada relatório salvo ganha uma página própria em
   `admin/relatorio.html?id=<id>` (link "Abrir" na lista do cliente) — um dashboard
-  navegável por seções (resumo executivo, indicadores, formação do caixa, receita,
-  despesas, produção por profissional, contas, pendências, próximos passos), pronta
-  pra usar numa tela/projeção durante a reunião. Pede login própria (mesmo
-  usuário/senha do painel) e tem um link de volta para a pasta do cliente certo.
+  navegável por seções, pronta pra usar numa tela/projeção durante a reunião (ou, no
+  modo de link público, o próprio dashboard do Power BI/Looker Studio embutido). Pede
+  login própria (mesmo usuário/senha do painel) e tem um link de volta para a pasta do
+  cliente certo.
 - Esses dados ficam só no Cloudflare KV (nunca no repositório Git) — por isso nenhum
   cliente ou relatório real está versionado aqui.
 

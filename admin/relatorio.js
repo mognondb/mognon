@@ -144,6 +144,31 @@
     }).join('')}</div>`;
   }
 
+  const TITULOS_TIPO = {
+    fechamento: 'Fechamento financeiro',
+    orcamento: 'Acompanhamento orçamentário',
+    comissoes: 'Demonstrativo de comissões',
+  };
+
+  function finalizar(secoes, nav) {
+    document.getElementById('relMain').innerHTML = secoes.join('');
+    document.getElementById('navLista').innerHTML = nav.map(([id, label]) =>
+      `<li><a href="#${id}">${escapeHtml(label)}</a></li>`).join('');
+
+    const links = Array.from(document.querySelectorAll('.rel-nav-lista a'));
+    const alvos = links.map((l) => document.getElementById(l.getAttribute('href').slice(1))).filter(Boolean);
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        const link = links.find((l) => l.getAttribute('href') === `#${entry.target.id}`);
+        if (!link) return;
+        links.forEach((l) => l.classList.remove('ativo'));
+        link.classList.add('ativo');
+      });
+    }, { rootMargin: '-20% 0px -70% 0px' });
+    alvos.forEach((el) => observer.observe(el));
+  }
+
   function renderizar(r) {
     document.getElementById('navCliente').textContent = r.cliente || '—';
     document.getElementById('navPeriodo').textContent = r.periodo || '—';
@@ -153,6 +178,33 @@
       if (voltar) voltar.href = `cliente.html?id=${encodeURIComponent(r.clienteId)}`;
     }
 
+    if (r.modo === 'embed') return renderizarEmbed(r);
+    if (r.tipo === 'orcamento') return renderizarOrcamento(r);
+    if (r.tipo === 'comissoes') return renderizarComissoes(r);
+    return renderizarFechamento(r);
+  }
+
+  // ---------- Embed (Power BI / Looker Studio) ----------
+
+  function renderizarEmbed(r) {
+    const titulo = TITULOS_TIPO[r.tipo] || 'Dashboard';
+    const secoes = [`
+      <div class="rel-capa">
+        <p class="rel-capa-eyebrow">${escapeHtml(titulo)}</p>
+        <h1>${escapeHtml(r.cliente)} — ${escapeHtml(r.periodo)}</h1>
+        ${r.descricao ? `<p>${escapeHtml(r.descricao)}</p>` : ''}
+      </div>
+      <section class="rel-secao" id="dashboard">
+        <div class="rel-embed-wrap">
+          <iframe class="rel-embed-frame" src="${escapeHtml(r.embedUrl)}" loading="lazy" allowfullscreen></iframe>
+        </div>
+      </section>`];
+    finalizar(secoes, [['dashboard', 'Dashboard']]);
+  }
+
+  // ---------- Fechamento financeiro ----------
+
+  function renderizarFechamento(r) {
     const secoes = [];
     const nav = [];
 
@@ -262,6 +314,32 @@
         </div>`));
     }
 
+    // Estoque
+    if (r.estoque?.length) {
+      const totalQtd = r.estoque.reduce((s, e) => s + Number(e.quantidade || 0), 0);
+      const totalValor = r.estoque.reduce((s, e) => s + Number(e.valorTotal || 0), 0);
+      nav.push(['estoque', 'Estoque']);
+      secoes.push(secao('estoque', 'Posição atual', 'Estoque', '', `
+        <table class="rel-tabela">
+          <thead><tr><th>Produto</th><th>Quantidade</th><th>Valor unitário</th><th>Valor total</th></tr></thead>
+          <tbody>
+            ${r.estoque.map((e) => `
+              <tr>
+                <td>${escapeHtml(e.produto)}</td>
+                <td class="num">${e.quantidade}</td>
+                <td class="num">${fmtBRL(e.valorUnitario)}</td>
+                <td class="num">${fmtBRL(e.valorTotal)}</td>
+              </tr>`).join('')}
+            <tr class="total">
+              <td>Total</td>
+              <td class="num">${totalQtd}</td>
+              <td></td>
+              <td class="num">${fmtBRL(totalValor)}</td>
+            </tr>
+          </tbody>
+        </table>`));
+    }
+
     // Contas a pagar
     if (r.contasAPagarPorMes?.length || r.contasAPagarPorCategoria?.length) {
       nav.push(['apagar', 'Contas a pagar']);
@@ -302,23 +380,132 @@
       secoes.push(`<p class="rel-fonte">${escapeHtml(r.fontes)}</p>`);
     }
 
-    document.getElementById('relMain').innerHTML = secoes.join('');
-    document.getElementById('navLista').innerHTML = nav.map(([id, label]) =>
-      `<li><a href="#${id}">${escapeHtml(label)}</a></li>`).join('');
+    finalizar(secoes, nav);
+  }
 
-    // Destaca o item ativo da navegação ao rolar
-    const links = Array.from(document.querySelectorAll('.rel-nav-lista a'));
-    const alvos = links.map((l) => document.getElementById(l.getAttribute('href').slice(1))).filter(Boolean);
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (!entry.isIntersecting) return;
-        const link = links.find((l) => l.getAttribute('href') === `#${entry.target.id}`);
-        if (!link) return;
-        links.forEach((l) => l.classList.remove('ativo'));
-        link.classList.add('ativo');
-      });
-    }, { rootMargin: '-20% 0px -70% 0px' });
-    alvos.forEach((el) => observer.observe(el));
+  // ---------- Acompanhamento orçamentário ----------
+
+  function renderizarOrcamento(r) {
+    const secoes = [];
+    const nav = [];
+
+    secoes.push(`
+      <div class="rel-capa">
+        <p class="rel-capa-eyebrow">Acompanhamento orçamentário</p>
+        <h1>${escapeHtml(r.cliente)} — ${escapeHtml(r.periodo)}</h1>
+        <p>Preparado por ${escapeHtml(r.preparadoPor || 'CM Soluções Financeiras')}${r.dataPreparo ? ` · ${escapeHtml(r.dataPreparo)}` : ''}</p>
+      </div>`);
+
+    if (r.categorias?.length) {
+      const totalOrcado = r.categorias.reduce((s, c) => s + Number(c.orcado || 0), 0);
+      const totalRealizado = r.categorias.reduce((s, c) => s + Number(c.realizado || 0), 0);
+      const totalDesvio = totalRealizado - totalOrcado;
+      nav.push(['categorias', 'Orçado vs. Realizado']);
+      secoes.push(secao('categorias', 'Por categoria', 'Orçado vs. Realizado', '', `
+        <table class="rel-tabela">
+          <thead><tr><th>Categoria</th><th>Tipo</th><th>Orçado</th><th>Realizado</th><th>Desvio</th><th>Desvio %</th></tr></thead>
+          <tbody>
+            ${r.categorias.map((c) => {
+              const orcado = Number(c.orcado || 0);
+              const realizado = Number(c.realizado || 0);
+              const desvio = realizado - orcado;
+              const desvioPct = orcado ? desvio / orcado : null;
+              return `
+                <tr>
+                  <td>${escapeHtml(c.categoria)}</td>
+                  <td>${escapeHtml(c.tipo)}</td>
+                  <td class="num">${fmtBRL(orcado)}</td>
+                  <td class="num">${fmtBRL(realizado)}</td>
+                  <td class="num ${desvio < 0 ? 'neg' : ''}">${fmtBRL(desvio)}</td>
+                  <td class="num ${desvio < 0 ? 'neg' : ''}">${desvioPct != null ? fmtPct(desvioPct) : '—'}</td>
+                </tr>`;
+            }).join('')}
+            <tr class="total">
+              <td>Total</td>
+              <td></td>
+              <td class="num">${fmtBRL(totalOrcado)}</td>
+              <td class="num">${fmtBRL(totalRealizado)}</td>
+              <td class="num ${totalDesvio < 0 ? 'neg' : ''}">${fmtBRL(totalDesvio)}</td>
+              <td class="num ${totalDesvio < 0 ? 'neg' : ''}">${totalOrcado ? fmtPct(totalDesvio / totalOrcado) : '—'}</td>
+            </tr>
+          </tbody>
+        </table>`));
+    }
+
+    if (r.observacoes?.length) {
+      nav.push(['observacoes', 'Observações']);
+      secoes.push(secao('observacoes', 'Pontos de atenção', 'Observações', '',
+        `<ul class="rel-resumo-lista">${r.observacoes.map((o) => `<li>${escapeHtml(o)}</li>`).join('')}</ul>`));
+    }
+
+    if (r.fontes) {
+      secoes.push(`<p class="rel-fonte">${escapeHtml(r.fontes)}</p>`);
+    }
+
+    finalizar(secoes, nav);
+  }
+
+  // ---------- Demonstrativo de comissões ----------
+
+  function renderizarComissoes(r) {
+    const secoes = [];
+    const nav = [];
+
+    secoes.push(`
+      <div class="rel-capa">
+        <p class="rel-capa-eyebrow">Demonstrativo de comissões${r.ramo ? ` · ${escapeHtml(r.ramo)}` : ''}</p>
+        <h1>${escapeHtml(r.cliente)} — ${escapeHtml(r.periodo)}</h1>
+        <p>Preparado por ${escapeHtml(r.preparadoPor || 'CM Soluções Financeiras')}${r.dataPreparo ? ` · ${escapeHtml(r.dataPreparo)}` : ''}</p>
+      </div>`);
+
+    if (r.comissoes?.length) {
+      const totalServico = r.comissoes.reduce((s, c) => s + Number(c.valorServico || 0), 0);
+      const totalComissao = r.comissoes.reduce((s, c) => s + Number(c.valorComissao || 0), 0);
+      const totalDescontos = r.comissoes.reduce((s, c) => s + Number(c.descontos || 0), 0);
+      const totalLiquido = r.comissoes.reduce((s, c) => s + Number(c.valorLiquido || 0), 0);
+      nav.push(['comissoes', 'Comissões por serviço']);
+      secoes.push(secao('comissoes', 'Detalhe', 'Comissões por serviço', '', `
+        <table class="rel-tabela">
+          <thead><tr><th>Prestador</th><th>Serviço</th><th>Valor do serviço</th><th>% comissão</th><th>Comissão</th><th>Descontos</th><th>Líquido</th></tr></thead>
+          <tbody>
+            ${r.comissoes.map((c) => `
+              <tr>
+                <td>${escapeHtml(c.prestador)}</td>
+                <td>${escapeHtml(c.servico)}</td>
+                <td class="num">${fmtBRL(c.valorServico)}</td>
+                <td class="num">${c.percComissao != null ? fmtPct(c.percComissao / 100) : '—'}</td>
+                <td class="num">${fmtBRL(c.valorComissao)}</td>
+                <td class="num ${c.descontos ? 'neg' : ''}">${c.descontos ? fmtBRL(-Math.abs(c.descontos)) : fmtBRL(0)}</td>
+                <td class="num">${fmtBRL(c.valorLiquido)}</td>
+              </tr>`).join('')}
+            <tr class="total">
+              <td colspan="2">Total</td>
+              <td class="num">${fmtBRL(totalServico)}</td>
+              <td></td>
+              <td class="num">${fmtBRL(totalComissao)}</td>
+              <td class="num ${totalDescontos ? 'neg' : ''}">${totalDescontos ? fmtBRL(-Math.abs(totalDescontos)) : fmtBRL(0)}</td>
+              <td class="num">${fmtBRL(totalLiquido)}</td>
+            </tr>
+          </tbody>
+        </table>`));
+
+      const porPrestador = Object.values(r.comissoes.reduce((acc, c) => {
+        const chave = c.prestador || '—';
+        if (!acc[chave]) acc[chave] = { prestador: chave, valor: 0 };
+        acc[chave].valor += Number(c.valorLiquido || 0);
+        return acc;
+      }, {}));
+      if (porPrestador.length > 1) {
+        nav.push(['por-prestador', 'Por prestador']);
+        secoes.push(secao('por-prestador', 'Resumo', 'Comissão líquida por prestador', '', barrasHtml(porPrestador.map((p) => ({ label: p.prestador, valor: p.valor })))));
+      }
+    }
+
+    if (r.fontes) {
+      secoes.push(`<p class="rel-fonte">${escapeHtml(r.fontes)}</p>`);
+    }
+
+    finalizar(secoes, nav);
   }
 
   // Se já tem sessão ativa nesta aba, entra direto
