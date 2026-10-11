@@ -100,36 +100,43 @@
 
 .rel-main {
   flex: 1;
-  padding: 50px 60px 100px;
+  padding: 28px 40px 40px;
   max-width: 1040px;
+  width: 100%;
 }
 
-.rel-secao {
-  margin-bottom: 70px;
-  scroll-margin-top: 30px;
+/* Cabeçalho compacto — uma linha, sempre visível acima da aba ativa */
+.rel-topo {
+  margin-bottom: 22px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--color-border);
 }
+.rel-topo-eyebrow {
+  color: var(--color-gold);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.rel-topo h1 { font-size: 1.5rem; margin: 0 0 4px; color: var(--color-olive-dark); }
+.rel-topo h1 .rel-topo-periodo { color: var(--color-text-light); font-weight: 500; }
+.rel-topo-meta { color: var(--color-text-light); font-size: 0.84rem; margin: 0; }
+
+/* Cada aba é um painel — só o ativo fica visível (JS alterna, não rolagem) */
+.rel-tab-painel { animation: rel-fade .12s ease; }
+@keyframes rel-fade { from { opacity: 0; } to { opacity: 1; } }
+
 .rel-secao-eyebrow {
   text-transform: uppercase;
   letter-spacing: 1.5px;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 600;
   color: var(--color-gold);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
-.rel-secao h2 { font-size: 1.7rem; margin-bottom: 6px; }
-.rel-secao-sub { color: var(--color-text-light); margin-bottom: 28px; max-width: 760px; }
-
-/* Capa */
-.rel-capa {
-  background: linear-gradient(135deg, var(--color-olive) 0%, var(--color-olive-dark) 100%);
-  color: #fff;
-  border-radius: var(--radius);
-  padding: 50px;
-  margin-bottom: 50px;
-}
-.rel-capa-eyebrow { color: var(--color-gold); text-transform: uppercase; letter-spacing: 1.5px; font-size: 0.8rem; font-weight: 600; margin-bottom: 14px; }
-.rel-capa h1 { color: #fff; font-size: 2.2rem; margin-bottom: 10px; }
-.rel-capa p { color: var(--color-beige); margin: 0; }
+.rel-secao h2 { font-size: 1.3rem; margin-bottom: 4px; }
+.rel-secao-sub { color: var(--color-text-light); margin-bottom: 16px; max-width: 760px; font-size: 0.88rem; }
 
 /* Resumo executivo */
 .rel-resumo-lista { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 14px; }

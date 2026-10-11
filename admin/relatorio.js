@@ -135,6 +135,16 @@
       </section>`;
   }
 
+  // Cabeçalho compacto — uma linha, fica sempre visível acima da aba ativa.
+  function cabecalho(eyebrow, cliente, periodo, meta) {
+    return `
+      <div class="rel-topo">
+        <p class="rel-topo-eyebrow">${escapeHtml(eyebrow)}</p>
+        <h1>${escapeHtml(cliente)} <span class="rel-topo-periodo">— ${escapeHtml(periodo)}</span></h1>
+        ${meta ? `<p class="rel-topo-meta">${escapeHtml(meta)}</p>` : ''}
+      </div>`;
+  }
+
   // Gráfico de barras horizontais interativo: hover/foco destaca a barra e mostra
   // um tooltip com o valor exato (e, quando fizer sentido, o % do total do grupo).
   function graficoBarras(itens, { negativo = false, percentual = false } = {}) {
@@ -277,27 +287,31 @@
     comissoes: 'Demonstrativo de comissões',
   };
 
-  function finalizar(secoes, nav) {
+  // cabecalhoHtml fica sempre visível; secoes[i]/nav[i] são as abas — só uma
+  // fica visível por vez, trocada por clique (não é mais âncora de rolagem).
+  function finalizar(cabecalhoHtml, fontesHtml, secoes, nav) {
     const main = document.getElementById('relMain');
-    main.innerHTML = secoes.join('');
-    document.getElementById('navLista').innerHTML = nav.map(([id, label]) =>
-      `<li><a href="#${id}">${escapeHtml(label)}</a></li>`).join('');
+    const paineisHtml = secoes.map((html, i) =>
+      `<div class="rel-tab-painel" data-tab="${nav[i][0]}" ${i === 0 ? '' : 'hidden'}>${html}</div>`).join('');
+    main.innerHTML = cabecalhoHtml + paineisHtml + (fontesHtml || '');
+
+    document.getElementById('navLista').innerHTML = nav.map(([id, label], i) =>
+      `<li><a href="#" class="${i === 0 ? 'ativo' : ''}" data-tab="${id}">${escapeHtml(label)}</a></li>`).join('');
 
     ativarTooltips(main);
     ativarOrdenacao(main);
 
     const links = Array.from(document.querySelectorAll('.rel-nav-lista a'));
-    const alvos = links.map((l) => document.getElementById(l.getAttribute('href').slice(1))).filter(Boolean);
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (!entry.isIntersecting) return;
-        const link = links.find((l) => l.getAttribute('href') === `#${entry.target.id}`);
-        if (!link) return;
+    const paineis = Array.from(main.querySelectorAll('.rel-tab-painel'));
+    links.forEach((link) => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (link.classList.contains('ativo')) return;
         links.forEach((l) => l.classList.remove('ativo'));
         link.classList.add('ativo');
+        paineis.forEach((p) => { p.hidden = p.dataset.tab !== link.dataset.tab; });
       });
-    }, { rootMargin: '-20% 0px -70% 0px' });
-    alvos.forEach((el) => observer.observe(el));
+    });
   }
 
   function renderizar(r) {
@@ -323,18 +337,12 @@
 
   function renderizarEmbed(r) {
     const titulo = TITULOS_TIPO[r.tipo] || 'Dashboard';
+    const cabecalhoHtml = cabecalho(titulo, r.cliente, r.periodo, r.descricao || '');
     const secoes = [`
-      <div class="rel-capa">
-        <p class="rel-capa-eyebrow">${escapeHtml(titulo)}</p>
-        <h1>${escapeHtml(r.cliente)} — ${escapeHtml(r.periodo)}</h1>
-        ${r.descricao ? `<p>${escapeHtml(r.descricao)}</p>` : ''}
-      </div>
-      <section class="rel-secao" id="dashboard">
-        <div class="rel-embed-wrap">
-          <iframe class="rel-embed-frame" src="${escapeHtml(r.embedUrl)}" loading="lazy" allowfullscreen></iframe>
-        </div>
-      </section>`];
-    finalizar(secoes, [['dashboard', 'Dashboard']]);
+      <div class="rel-embed-wrap">
+        <iframe class="rel-embed-frame" src="${escapeHtml(r.embedUrl)}" loading="lazy" allowfullscreen></iframe>
+      </div>`];
+    finalizar(cabecalhoHtml, '', secoes, [['dashboard', 'Dashboard']]);
   }
 
   // ---------- Fechamento financeiro ----------
@@ -343,20 +351,8 @@
     const secoes = [];
     const nav = [];
 
-    // Capa
-    secoes.push(`
-      <div class="rel-capa">
-        <p class="rel-capa-eyebrow">Fechamento financeiro</p>
-        <h1>${escapeHtml(r.cliente)} — ${escapeHtml(r.periodo)}</h1>
-        <p>Preparado por ${escapeHtml(r.preparadoPor || 'CM Soluções Financeiras')}${r.dataPreparo ? ` · ${escapeHtml(r.dataPreparo)}` : ''}</p>
-      </div>`);
-
-    // Resumo executivo
-    if (r.resumoExecutivo?.length) {
-      nav.push(['resumo', 'Resumo executivo']);
-      secoes.push(secao('resumo', 'Visão geral', 'Resumo executivo', '',
-        `<ul class="rel-resumo-lista">${r.resumoExecutivo.map((b) => `<li>${escapeHtml(b)}</li>`).join('')}</ul>`));
-    }
+    const cabecalhoHtml = cabecalho('Fechamento financeiro', r.cliente, r.periodo,
+      `Preparado por ${r.preparadoPor || 'CM Soluções Financeiras'}${r.dataPreparo ? ` · ${r.dataPreparo}` : ''}`);
 
     // KPIs
     if (r.kpis) {
@@ -528,25 +524,8 @@
         </table>`));
     }
 
-    // Próximos passos
-    if (r.proximosPassos?.length) {
-      nav.push(['passos', 'Próximos passos']);
-      secoes.push(secao('passos', 'Plano de ação', 'Próximos passos', '', `
-        <div class="rel-passos">
-          ${r.proximosPassos.map((p) => `
-            <div class="rel-passo">
-              <div class="rel-passo-prazo">${escapeHtml(p.prazo)}</div>
-              <div class="rel-passo-resp">${escapeHtml(p.responsavel)}</div>
-              <div class="rel-passo-corpo"><h4>${escapeHtml(p.titulo)}</h4><p>${escapeHtml(p.descricao)}</p></div>
-            </div>`).join('')}
-        </div>`));
-    }
-
-    if (r.fontes) {
-      secoes.push(`<p class="rel-fonte">${escapeHtml(r.fontes)}</p>`);
-    }
-
-    finalizar(secoes, nav);
+    const fontesHtml = r.fontes ? `<p class="rel-fonte">${escapeHtml(r.fontes)}</p>` : '';
+    finalizar(cabecalhoHtml, fontesHtml, secoes, nav);
   }
 
   // ---------- Acompanhamento orçamentário ----------
@@ -555,12 +534,8 @@
     const secoes = [];
     const nav = [];
 
-    secoes.push(`
-      <div class="rel-capa">
-        <p class="rel-capa-eyebrow">Acompanhamento orçamentário</p>
-        <h1>${escapeHtml(r.cliente)} — ${escapeHtml(r.periodo)}</h1>
-        <p>Preparado por ${escapeHtml(r.preparadoPor || 'CM Soluções Financeiras')}${r.dataPreparo ? ` · ${escapeHtml(r.dataPreparo)}` : ''}</p>
-      </div>`);
+    const cabecalhoHtml = cabecalho('Acompanhamento orçamentário', r.cliente, r.periodo,
+      `Preparado por ${r.preparadoPor || 'CM Soluções Financeiras'}${r.dataPreparo ? ` · ${r.dataPreparo}` : ''}`);
 
     if (r.categorias?.length) {
       const totalOrcado = r.categorias.reduce((s, c) => s + Number(c.orcado || 0), 0);
@@ -609,17 +584,8 @@
         </table>`));
     }
 
-    if (r.observacoes?.length) {
-      nav.push(['observacoes', 'Observações']);
-      secoes.push(secao('observacoes', 'Pontos de atenção', 'Observações', '',
-        `<ul class="rel-resumo-lista">${r.observacoes.map((o) => `<li>${escapeHtml(o)}</li>`).join('')}</ul>`));
-    }
-
-    if (r.fontes) {
-      secoes.push(`<p class="rel-fonte">${escapeHtml(r.fontes)}</p>`);
-    }
-
-    finalizar(secoes, nav);
+    const fontesHtml = r.fontes ? `<p class="rel-fonte">${escapeHtml(r.fontes)}</p>` : '';
+    finalizar(cabecalhoHtml, fontesHtml, secoes, nav);
   }
 
   // ---------- Demonstrativo de comissões ----------
@@ -628,12 +594,11 @@
     const secoes = [];
     const nav = [];
 
-    secoes.push(`
-      <div class="rel-capa">
-        <p class="rel-capa-eyebrow">Demonstrativo de comissões${r.ramo ? ` · ${escapeHtml(r.ramo)}` : ''}</p>
-        <h1>${escapeHtml(r.cliente)} — ${escapeHtml(r.periodo)}</h1>
-        <p>Preparado por ${escapeHtml(r.preparadoPor || 'CM Soluções Financeiras')}${r.dataPreparo ? ` · ${escapeHtml(r.dataPreparo)}` : ''}</p>
-      </div>`);
+    const cabecalhoHtml = cabecalho(
+      `Demonstrativo de comissões${r.ramo ? ` · ${r.ramo}` : ''}`,
+      r.cliente, r.periodo,
+      `Preparado por ${r.preparadoPor || 'CM Soluções Financeiras'}${r.dataPreparo ? ` · ${r.dataPreparo}` : ''}`,
+    );
 
     if (r.comissoes?.length) {
       const totalServico = r.comissoes.reduce((s, c) => s + Number(c.valorServico || 0), 0);
@@ -691,11 +656,8 @@
       }
     }
 
-    if (r.fontes) {
-      secoes.push(`<p class="rel-fonte">${escapeHtml(r.fontes)}</p>`);
-    }
-
-    finalizar(secoes, nav);
+    const fontesHtml = r.fontes ? `<p class="rel-fonte">${escapeHtml(r.fontes)}</p>` : '';
+    finalizar(cabecalhoHtml, fontesHtml, secoes, nav);
   }
 
   // Se já tem sessão ativa nesta aba, entra direto
