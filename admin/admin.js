@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const TIPOS = ['infoprodutos', 'dashboards'];
+  const TIPOS = ['infoprodutos'];
 
   // Endereço do servidor (Cloudflare Worker). Não é segredo — só a senha é —
   // por isso fica fixo aqui em vez de pedir pra digitar a cada login.
@@ -16,7 +16,6 @@
 
   const state = {
     infoprodutos: { items: [], dirty: false, editId: null },
-    dashboards: { items: [], dirty: false, editId: null },
   };
 
   // ---------- Utilidades ----------
@@ -238,27 +237,13 @@
     }
     lista.innerHTML = itens.map((item) => {
       const ativo = item.ativo !== false;
-      if (tipo === 'infoprodutos') {
-        const tipoLabel = item.tipo === 'gratis' ? 'Grátis' : (item.precoLabel || 'Pago');
-        return `
-          <div class="admin-item ${ativo ? '' : 'inativo'}" data-id="${escapeHtml(item.id)}">
-            <div class="admin-item-info">
-              <h4>${escapeHtml(item.nome)}</h4>
-              <p>${escapeHtml(item.descricao)}</p>
-              <span class="admin-item-meta">${escapeHtml(tipoLabel)}${ativo ? '' : ' · inativo'}</span>
-            </div>
-            <div class="admin-item-actions">
-              <button class="btn btn-ghost btn-sm" data-acao="editar">Editar</button>
-              <button class="btn btn-outline btn-sm" data-acao="remover">Remover</button>
-            </div>
-          </div>`;
-      }
+      const tipoLabel = item.tipo === 'gratis' ? 'Grátis' : (item.precoLabel || 'Pago');
       return `
         <div class="admin-item ${ativo ? '' : 'inativo'}" data-id="${escapeHtml(item.id)}">
           <div class="admin-item-info">
-            <h4>${escapeHtml(item.titulo)}</h4>
+            <h4>${escapeHtml(item.nome)}</h4>
             <p>${escapeHtml(item.descricao)}</p>
-            <span class="admin-item-meta">${item.preview === 'donut' ? 'Donut' : 'Barras'}${ativo ? '' : ' · inativo'}</span>
+            <span class="admin-item-meta">${escapeHtml(tipoLabel)}${ativo ? '' : ' · inativo'}</span>
           </div>
           <div class="admin-item-actions">
             <button class="btn btn-ghost btn-sm" data-acao="editar">Editar</button>
@@ -269,14 +254,9 @@
 
     lista.querySelectorAll('.admin-item').forEach((el) => {
       const id = el.dataset.id;
-      el.querySelector('[data-acao="editar"]').addEventListener('click', () => abrirModal(tipo, id));
+      el.querySelector('[data-acao="editar"]').addEventListener('click', () => abrirModalInfoproduto(id));
       el.querySelector('[data-acao="remover"]').addEventListener('click', () => removerItem(tipo, id));
     });
-  }
-
-  function abrirModal(tipo, id) {
-    if (tipo === 'infoprodutos') abrirModalInfoproduto(id);
-    else abrirModalDashboard(id);
   }
 
   function removerItem(tipo, id) {
@@ -291,10 +271,6 @@
   document.getElementById('btnRecarregarInfoprodutos').addEventListener('click', () => {
     if (state.infoprodutos.dirty && !confirm('Isso descarta suas alterações não salvas. Continuar?')) return;
     carregarLista('infoprodutos');
-  });
-  document.getElementById('btnRecarregarDashboards').addEventListener('click', () => {
-    if (state.dashboards.dirty && !confirm('Isso descarta suas alterações não salvas. Continuar?')) return;
-    carregarLista('dashboards');
   });
 
   async function salvar(tipo) {
@@ -313,7 +289,6 @@
   }
 
   document.getElementById('btnSalvarInfoprodutos').addEventListener('click', () => salvar('infoprodutos'));
-  document.getElementById('btnSalvarDashboards').addEventListener('click', () => salvar('dashboards'));
 
   // ---------- Modal Infoproduto ----------
 
@@ -381,88 +356,6 @@
     modalInfoproduto.hidden = true;
   });
 
-  // ---------- Modal Dashboard ----------
-
-  const modalDashboard = document.getElementById('modalDashboard');
-  const formDashboard = document.getElementById('formDashboard');
-  const dbPreview = document.getElementById('dbPreview');
-  const camposBarras = document.getElementById('camposBarras');
-  const camposDonut = document.getElementById('camposDonut');
-
-  function atualizarCamposDashboard() {
-    const barras = dbPreview.value === 'barras';
-    camposBarras.style.display = barras ? 'block' : 'none';
-    camposDonut.style.display = barras ? 'none' : 'block';
-  }
-  dbPreview.addEventListener('change', atualizarCamposDashboard);
-
-  function abrirModalDashboard(id) {
-    state.dashboards.editId = id || null;
-    const item = id ? state.dashboards.items.find((i) => i.id === id) : null;
-    document.getElementById('modalDashboardTitulo').textContent = item ? 'Editar dashboard' : 'Novo dashboard';
-    document.getElementById('dbTitulo').value = item?.titulo || '';
-    document.getElementById('dbDescricao').value = item?.descricao || '';
-    dbPreview.value = item?.preview || 'barras';
-    document.getElementById('dbKpi1Valor').value = item?.kpis?.[0]?.valor || '';
-    document.getElementById('dbKpi1Label').value = item?.kpis?.[0]?.label || '';
-    document.getElementById('dbKpi2Valor').value = item?.kpis?.[1]?.valor || '';
-    document.getElementById('dbKpi2Label').value = item?.kpis?.[1]?.label || '';
-    document.getElementById('dbBarras').value = (item?.barras || []).join(',');
-    document.getElementById('dbP1').value = item?.donut?.p1 ?? '';
-    document.getElementById('dbP2').value = item?.donut?.p2 ?? '';
-    document.getElementById('dbLegendas').value = (item?.legendas || []).join(',');
-    document.getElementById('dbAtivo').checked = item ? item.ativo !== false : true;
-    atualizarCamposDashboard();
-    modalDashboard.hidden = false;
-  }
-
-  document.getElementById('btnNovoDashboard').addEventListener('click', () => abrirModalDashboard(null));
-  document.getElementById('btnCancelarDashboard').addEventListener('click', () => { modalDashboard.hidden = true; });
-
-  formDashboard.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const barras = dbPreview.value === 'barras';
-
-    const dados = {
-      titulo: document.getElementById('dbTitulo').value.trim(),
-      descricao: document.getElementById('dbDescricao').value.trim(),
-      preview: dbPreview.value,
-      ativo: document.getElementById('dbAtivo').checked,
-    };
-
-    if (barras) {
-      dados.kpis = [
-        { valor: document.getElementById('dbKpi1Valor').value.trim(), label: document.getElementById('dbKpi1Label').value.trim() },
-        { valor: document.getElementById('dbKpi2Valor').value.trim(), label: document.getElementById('dbKpi2Label').value.trim() },
-      ];
-      dados.barras = document.getElementById('dbBarras').value
-        .split(',')
-        .map((v) => parseInt(v.trim(), 10))
-        .filter((v) => !Number.isNaN(v));
-    } else {
-      dados.donut = {
-        p1: parseInt(document.getElementById('dbP1').value, 10) || 0,
-        p2: parseInt(document.getElementById('dbP2').value, 10) || 0,
-      };
-      dados.legendas = document.getElementById('dbLegendas').value
-        .split(',')
-        .map((v) => v.trim())
-        .filter(Boolean);
-    }
-
-    const itens = state.dashboards.items;
-    if (state.dashboards.editId) {
-      const idx = itens.findIndex((i) => i.id === state.dashboards.editId);
-      itens[idx] = { ...itens[idx], ...dados };
-    } else {
-      const id = gerarId(dados.titulo, itens.map((i) => i.id));
-      itens.push({ id, ...dados });
-    }
-
-    marcarDirty('dashboards', true);
-    renderLista('dashboards');
-    modalDashboard.hidden = true;
-  });
   // ---------- Clientes (pasta por cliente, com relatórios de fechamento) ----------
 
   const clientesState = { itens: [] };

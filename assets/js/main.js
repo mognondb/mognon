@@ -51,10 +51,10 @@ function escapeHtml(str) {
 }
 
 // Endereço do servidor (Cloudflare Worker) do painel /admin/ — não é segredo,
-// só a senha de login é. O site busca os dados mais recentes ali (infoprodutos,
-// dashboards do portfólio, e o formulário de Diagnóstico Financeiro); se a
-// chamada falhar, infoprodutos/dashboards caem de volta para os arquivos
-// estáticos em assets/data/. Veja admin/README-servidor.md.
+// só a senha de login é. O site busca os dados mais recentes ali (infoprodutos
+// e o formulário de Diagnóstico Financeiro); se a chamada de infoprodutos
+// falhar, cai de volta para o arquivo estático em assets/data/. Veja
+// admin/README-servidor.md.
 const ADMIN_API_URL = 'https://bold-forest-84c8fff.mognon-db.workers.dev';
 
 async function buscarDados(tipo, caminhoLocal) {
@@ -106,59 +106,7 @@ async function carregarInfoprodutos() {
   }
 }
 
-// Portfólio de dashboards: carregado do servidor (ou de assets/data/dashboards.json
-// como fallback), cadastrados pelo painel /admin/
-async function carregarDashboards() {
-  const grid = document.getElementById('portfolioGrid');
-  if (!grid) return;
-  try {
-    const dados = await buscarDados('dashboards', 'assets/data/dashboards.json');
-    const itens = dados.filter((item) => item.ativo !== false);
-
-    if (itens.length === 0) {
-      grid.innerHTML = '<p class="loading-placeholder">Nenhum dashboard no portfólio ainda.</p>';
-      return;
-    }
-
-    const coresLegenda = ['var(--color-olive)', 'var(--color-gold)', 'var(--color-beige)'];
-
-    grid.innerHTML = itens.map((item) => {
-      let previewHtml;
-      if (item.preview === 'donut') {
-        const p1 = item.donut?.p1 ?? 50;
-        const p2 = item.donut?.p2 ?? 75;
-        const legendas = (item.legendas || []).map((legenda, i) =>
-          `<span><i style="background:${coresLegenda[i] || coresLegenda[2]}"></i>${escapeHtml(legenda)}</span>`
-        ).join('');
-        previewHtml = `
-          <div class="mini-donut" style="--p1:${p1}%; --p2:${p2}%;"></div>
-          <div class="mini-legend">${legendas}</div>`;
-      } else {
-        const kpis = (item.kpis || []).map((kpi) =>
-          `<span class="mini-kpi"><strong>${escapeHtml(kpi.valor)}</strong>${escapeHtml(kpi.label)}</span>`
-        ).join('');
-        const barras = (item.barras || []).map((altura) => `<span style="--h:${altura}%"></span>`).join('');
-        previewHtml = `
-          <div class="mini-kpis">${kpis}</div>
-          <div class="mini-chart">${barras}</div>`;
-      }
-
-      return `
-        <article class="portfolio-card">
-          <div class="portfolio-preview">${previewHtml}</div>
-          <div class="portfolio-info">
-            <h3>${escapeHtml(item.titulo)}</h3>
-            <p>${escapeHtml(item.descricao)}</p>
-          </div>
-        </article>`;
-    }).join('');
-  } catch (err) {
-    grid.innerHTML = '<p class="loading-placeholder">Não foi possível carregar o portfólio agora.</p>';
-  }
-}
-
 carregarInfoprodutos();
-carregarDashboards();
 
 // Formulário de contato/relatório via Formspree (ou similar)
 const form = document.getElementById('formRelatorio');

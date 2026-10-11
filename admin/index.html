@@ -18,7 +18,7 @@
   <div class="admin-login-box">
     <img src="../assets/img/logo-cm.png" alt="CM Soluções Financeiras" class="admin-logo">
     <h1>Painel Administrativo</h1>
-    <p class="admin-sub">Cadastre infoprodutos, dashboards do portfólio e relatórios de clientes sem mexer em código.</p>
+    <p class="admin-sub">Cadastre infoprodutos e relatórios de clientes sem mexer em código.</p>
 
     <form id="loginForm">
       <label for="userInput">Usuário</label>
@@ -45,7 +45,6 @@
 
   <nav class="admin-tabs">
     <button class="admin-tab active" data-tab="infoprodutos">Infoprodutos</button>
-    <button class="admin-tab" data-tab="dashboards">Dashboards (Portfólio)</button>
     <button class="admin-tab" data-tab="clientes">Clientes</button>
     <button class="admin-tab" data-tab="usuarios">Usuários</button>
     <button class="admin-tab" data-tab="diagnosticos">Diagnósticos</button>
@@ -65,22 +64,6 @@
       </div>
       <p class="admin-feedback" id="feedbackInfoprodutos" role="status"></p>
       <div class="admin-lista" id="listaInfoprodutos">
-        <p class="loading-placeholder">Carregando...</p>
-      </div>
-    </section>
-
-    <!-- TAB DASHBOARDS -->
-    <section class="admin-tab-panel" id="tab-dashboards" hidden>
-      <div class="admin-toolbar">
-        <button class="btn btn-primary" id="btnNovoDashboard">+ Novo dashboard</button>
-        <div class="admin-toolbar-actions">
-          <span class="admin-dirty" id="dirtyDashboards" hidden>Alterações não salvas</span>
-          <button class="btn btn-ghost btn-sm" id="btnRecarregarDashboards">Recarregar</button>
-          <button class="btn btn-primary btn-sm" id="btnSalvarDashboards">Salvar alterações</button>
-        </div>
-      </div>
-      <p class="admin-feedback" id="feedbackDashboards" role="status"></p>
-      <div class="admin-lista" id="listaDashboards">
         <p class="loading-placeholder">Carregando...</p>
       </div>
     </section>
@@ -186,58 +169,6 @@
 
       <div class="admin-modal-actions">
         <button type="button" class="btn btn-outline" id="btnCancelarInfoproduto">Cancelar</button>
-        <button type="submit" class="btn btn-primary">Salvar item</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- MODAL: FORM DASHBOARD -->
-<div class="admin-modal" id="modalDashboard" hidden>
-  <div class="admin-modal-box">
-    <h2 id="modalDashboardTitulo">Novo dashboard</h2>
-    <form id="formDashboard">
-      <label for="dbTitulo">Título *</label>
-      <input type="text" id="dbTitulo" required placeholder="Ex: Fluxo de Caixa">
-
-      <label for="dbDescricao">Descrição *</label>
-      <textarea id="dbDescricao" rows="3" required placeholder="Descrição curta que aparece no card"></textarea>
-
-      <label for="dbPreview">Estilo do preview *</label>
-      <select id="dbPreview" required>
-        <option value="barras">Gráfico de barras + 2 indicadores</option>
-        <option value="donut">Gráfico de rosca (donut) + legenda</option>
-      </select>
-
-      <div id="camposBarras">
-        <label for="dbKpi1Valor">Indicador 1 — valor</label>
-        <input type="text" id="dbKpi1Valor" placeholder="Ex: R$ 128k">
-        <label for="dbKpi1Label">Indicador 1 — legenda</label>
-        <input type="text" id="dbKpi1Label" placeholder="Ex: Receita">
-        <label for="dbKpi2Valor">Indicador 2 — valor</label>
-        <input type="text" id="dbKpi2Valor" placeholder="Ex: 32%">
-        <label for="dbKpi2Label">Indicador 2 — legenda</label>
-        <input type="text" id="dbKpi2Label" placeholder="Ex: Margem">
-        <label for="dbBarras">Valores das barras (0 a 100, separados por vírgula)</label>
-        <input type="text" id="dbBarras" placeholder="Ex: 35,55,45,70,60,85">
-      </div>
-
-      <div id="camposDonut">
-        <label for="dbP1">Ponto de corte 1 (%)</label>
-        <input type="number" id="dbP1" min="0" max="100" placeholder="Ex: 41">
-        <label for="dbP2">Ponto de corte 2 (%)</label>
-        <input type="number" id="dbP2" min="0" max="100" placeholder="Ex: 68">
-        <label for="dbLegendas">Legendas (3, separadas por vírgula)</label>
-        <input type="text" id="dbLegendas" placeholder="Ex: Fixos,Variáveis,Outros">
-      </div>
-
-      <label class="checkbox-label">
-        <input type="checkbox" id="dbAtivo" checked>
-        Dashboard ativo (visível no portfólio)
-      </label>
-
-      <div class="admin-modal-actions">
-        <button type="button" class="btn btn-outline" id="btnCancelarDashboard">Cancelar</button>
         <button type="submit" class="btn btn-primary">Salvar item</button>
       </div>
     </form>

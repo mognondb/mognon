@@ -2,8 +2,8 @@
  * Servidor (Cloudflare Worker) do painel administrativo da CM Soluções Financeiras.
  *
  * Guarda o usuário/senha do admin como segredos do servidor (nunca expostos ao
- * navegador) e guarda os dados de infoprodutos/dashboards num banco de dados
- * Cloudflare KV (sem precisar de token do GitHub nem de nenhuma outra conta).
+ * navegador) e guarda os dados de infoprodutos num banco de dados Cloudflare KV
+ * (sem precisar de token do GitHub nem de nenhuma outra conta).
  *
  * Deploy: cole este arquivo no Cloudflare Workers (dash.cloudflare.com), crie um
  * KV namespace e vincule-o à variável CM_DATA, e configure ADMIN_USER/ADMIN_PASS
@@ -73,44 +73,6 @@ const PADRAO = {
       tipo: 'hotmart',
       precoLabel: 'R$ 197',
       link: 'https://pay.hotmart.com/SEU-LINK-AQUI',
-      ativo: true,
-    },
-  ],
-  dashboards: [
-    {
-      id: 'fluxo-de-caixa',
-      titulo: 'Fluxo de Caixa',
-      descricao: 'Entradas, saídas e saldo projetado mês a mês, com alertas de fluxo negativo.',
-      preview: 'barras',
-      kpis: [{ valor: 'R$ 128k', label: 'Receita' }, { valor: '32%', label: 'Margem' }],
-      barras: [35, 55, 45, 70, 60, 85],
-      ativo: true,
-    },
-    {
-      id: 'despesas-por-categoria',
-      titulo: 'Despesas por Categoria',
-      descricao: 'Distribuição de gastos fixos, variáveis e extras, com comparação mensal.',
-      preview: 'donut',
-      donut: { p1: 41, p2: 68 },
-      legendas: ['Fixos', 'Variáveis', 'Outros'],
-      ativo: true,
-    },
-    {
-      id: 'indicadores-investimentos',
-      titulo: 'Indicadores de Investimentos',
-      descricao: 'Evolução da carteira, rentabilidade e diversificação por classe de ativo.',
-      preview: 'barras',
-      kpis: [{ valor: '18,3%', label: 'Rentab.' }, { valor: 'R$ 42k', label: 'Aportes' }],
-      barras: [25, 40, 38, 58, 72, 90],
-      ativo: true,
-    },
-    {
-      id: 'indicadores-comerciais',
-      titulo: 'Indicadores Comerciais',
-      descricao: 'Metas de vendas, ticket médio e desempenho por período ou equipe.',
-      preview: 'donut',
-      donut: { p1: 55, p2: 80 },
-      legendas: ['Meta atingida', 'Em andamento', 'Não iniciado'],
       ativo: true,
     },
   ],
@@ -325,10 +287,9 @@ export default {
       return jsonResponse(indice, 200, env);
     }
 
-    // Clientes, relatórios/dashboards de apresentação e usuários do painel: sempre
-    // exigem login, tanto pra ler quanto pra gravar — são dados financeiros
-    // sensíveis de clientes, diferente dos infoprodutos/dashboards do portfólio
-    // (que são públicos).
+    // Clientes, relatórios de apresentação e usuários do painel: sempre exigem
+    // login, tanto pra ler quanto pra gravar — são dados financeiros sensíveis
+    // de clientes, diferente dos infoprodutos (que são públicos).
     const rotasProtegidas = ['/api/clientes', '/api/cliente', '/api/relatorios', '/api/relatorio', '/api/usuarios', '/api/usuario'];
     if (rotasProtegidas.includes(url.pathname)) {
       const sessao = await autenticarSessao(request, env);
@@ -586,7 +547,7 @@ export default {
     }
 
     const tipo = url.searchParams.get('path');
-    if (tipo !== 'infoprodutos' && tipo !== 'dashboards') {
+    if (tipo !== 'infoprodutos') {
       return jsonResponse({ message: 'Parâmetro "path" inválido' }, 400, env);
     }
 

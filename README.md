@@ -9,7 +9,6 @@ index.html                 Página única com todas as seções
 assets/css/style.css        Estilos
 assets/js/main.js           Menu mobile, formulário de contato e renderização dinâmica
 assets/data/infoprodutos.json  Dados dos infoprodutos (cadastrados via /admin/)
-assets/data/dashboards.json    Dados do portfólio de dashboards (cadastrados via /admin/)
 assets/downloads/           Planilhas gratuitas (CSV) disponíveis para download
 assets/img/                 Logo e imagens
 admin/                      Painel administrativo (escondido, não linkado no site)
@@ -28,16 +27,14 @@ legacy-jekyll-boilerplate/  Arquivos antigos do scaffold padrão do GitHub Pages
 2. **Sobre** — quem é a CM e como ela trabalha.
 3. **Serviços** — os níveis de apoio (Implantação, Acompanhamento, Assistência, Gestão) e o
    Diagnóstico Financeiro gratuito (abre um formulário em modal — veja mais abaixo).
-4. **Portfólio** — dashboards em Power BI, carregados do servidor do painel (ou de
-   `assets/data/dashboards.json` como fallback).
-5. **Infoprodutos** — planilhas gratuitas e produtos pagos (Hotmart), carregados do
+4. **Infoprodutos** — planilhas gratuitas e produtos pagos (Hotmart), carregados do
    servidor do painel (ou de `assets/data/infoprodutos.json` como fallback).
-6. **Contato / Relatório** — formulário para o cliente interessado preencher.
+5. **Contato / Relatório** — formulário para o cliente interessado preencher.
 
 ## Painel administrativo (`/admin/`)
 
 Página **escondida** (não aparece no menu, bloqueada em `robots.txt`) para cadastrar
-infoprodutos e dashboards do portfólio **sem editar código**.
+infoprodutos **sem editar código**.
 
 - Acesse `seusite.com/admin/`
 - Login: **usuário e senha**, só isso — verificados por um servidor próprio
@@ -57,8 +54,6 @@ infoprodutos e dashboards do portfólio **sem editar código**.
   (o painel ainda não faz upload de arquivo).
 - **Infoprodutos pagos**: o campo "link" é a URL de checkout da Hotmart
   (ex: `https://pay.hotmart.com/XXXXXXX`).
-- **Dashboards**: cada item usa um mini-preview em CSS (barras ou donut) com dados
-  fictícios configuráveis — não são capturas de tela reais.
 
 O painel não aparece no menu do site e é bloqueado em `robots.txt`, mas isso é só para
 não aparecer em buscas — quem de fato impede alguém de salvar algo é o usuário/senha
@@ -69,9 +64,9 @@ verificado pelo servidor.
 Uma terceira aba do painel, **"Clientes"**, funciona como uma pasta por cliente
 (`admin/cliente.html?id=<id>`): dentro de cada cliente você cadastra até três tipos de
 relatório, cada um por período (ex.: Instituto Luanda → Fechamento de Setembro/2026,
-Outubro/2026...), para apresentar numa reunião. Diferente dos infoprodutos/dashboards
-do portfólio, **esses dados nunca são públicos**: tanto a leitura quanto a gravação
-exigem login no servidor.
+Outubro/2026...), para apresentar numa reunião. Diferente dos infoprodutos (que são
+públicos), **esses dados de cliente nunca são públicos**: tanto a leitura quanto a
+gravação exigem login no servidor.
 
 - **Aba "Clientes"** (`admin/index.html`): lista os clientes cadastrados, cria novos
   (nome + observações) e exclui (excluir um cliente apaga também todos os relatórios
@@ -190,11 +185,11 @@ e agora Diagnóstico Financeiro), copie o conteúdo novo para o Worker no Cloudf
 `FORMSPREE_DIAGNOSTICO_URL` do item 1 acima, que é opcional.
 
 ### 5. Site público já busca os dados em tempo real
-`assets/js/main.js` (constante `ADMIN_API_URL`) já aponta pro Worker publicado — o
-Portfólio e os Infoprodutos do site mostram direto o que está cadastrado no painel
-(sem precisar de novo deploy a cada alteração), com `assets/data/*.json` só como
-reserva caso o servidor esteja fora do ar. O formulário de Diagnóstico Financeiro
-depende dessa mesma conexão pra funcionar.
+`assets/js/main.js` (constante `ADMIN_API_URL`) já aponta pro Worker publicado — os
+Infoprodutos do site mostram direto o que está cadastrado no painel (sem precisar de
+novo deploy a cada alteração), com `assets/data/infoprodutos.json` só como reserva
+caso o servidor esteja fora do ar. O formulário de Diagnóstico Financeiro depende
+dessa mesma conexão pra funcionar.
 
 ## Publicação
 
