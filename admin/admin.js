@@ -241,7 +241,6 @@
         const tipoLabel = item.tipo === 'gratis' ? 'Grátis' : (item.precoLabel || 'Pago');
         return `
           <div class="admin-item ${ativo ? '' : 'inativo'}" data-id="${escapeHtml(item.id)}">
-            <div class="admin-item-icon">${escapeHtml(item.icone || '📦')}</div>
             <div class="admin-item-info">
               <h4>${escapeHtml(item.nome)}</h4>
               <p>${escapeHtml(item.descricao)}</p>
@@ -255,7 +254,6 @@
       }
       return `
         <div class="admin-item ${ativo ? '' : 'inativo'}" data-id="${escapeHtml(item.id)}">
-          <div class="admin-item-icon">${item.preview === 'donut' ? '🍩' : '📊'}</div>
           <div class="admin-item-info">
             <h4>${escapeHtml(item.titulo)}</h4>
             <p>${escapeHtml(item.descricao)}</p>
@@ -521,7 +519,6 @@
       .sort((a, b) => (b.atualizadoEm || '').localeCompare(a.atualizadoEm || ''))
       .map((c) => `
         <div class="admin-item" data-id="${escapeHtml(c.id)}">
-          <div class="admin-item-icon">🗂️</div>
           <div class="admin-item-info">
             <h4>${escapeHtml(c.nome)}</h4>
             <p>${c.qtdRelatorios || 0} relatório${c.qtdRelatorios === 1 ? '' : 's'} cadastrado${c.qtdRelatorios === 1 ? '' : 's'}</p>
@@ -648,7 +645,6 @@
         const escopo = u.papel === 'admin' ? '' : u.papel === 'cliente' ? ` · ${escapeHtml(clienteNome)}` : ` · relatório ${escapeHtml(u.relatorioId || '')}`;
         return `
           <div class="admin-item ${u.ativo === false ? 'inativo' : ''}" data-username="${escapeHtml(u.username)}">
-            <div class="admin-item-icon">${u.papel === 'admin' ? '🛡️' : u.papel === 'cliente' ? '🗂️' : '🔗'}</div>
             <div class="admin-item-info">
               <h4>${escapeHtml(u.nome)} <small>(${escapeHtml(u.username)})</small></h4>
               <p>${PAPEL_LABEL[u.papel] || u.papel}${escopo}</p>

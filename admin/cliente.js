@@ -216,7 +216,6 @@
       .sort((a, b) => (b.atualizadoEm || '').localeCompare(a.atualizadoEm || ''))
       .map((r) => `
         <div class="admin-item ${r.ativo === false ? 'inativo' : ''}" data-id="${escapeHtml(r.id)}">
-          <div class="admin-item-icon">${r.modo === 'embed' ? '🔗' : '📑'}</div>
           <div class="admin-item-info">
             <h4>${escapeHtml(r.periodo)}</h4>
             <p>${r.atualizadoEm ? new Date(r.atualizadoEm).toLocaleString('pt-BR') : ''}</p>

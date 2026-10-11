@@ -100,15 +100,15 @@
 
 .rel-main {
   flex: 1;
-  padding: 28px 40px 40px;
-  max-width: 1040px;
+  padding: 24px 32px 32px;
+  max-width: 1100px;
   width: 100%;
 }
 
 /* Cabeçalho compacto — uma linha, sempre visível acima da aba ativa */
 .rel-topo {
-  margin-bottom: 22px;
-  padding-bottom: 18px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
   border-bottom: 1px solid var(--color-border);
 }
 .rel-topo-eyebrow {
@@ -130,44 +130,60 @@
 .rel-secao-eyebrow {
   text-transform: uppercase;
   letter-spacing: 1.5px;
-  font-size: 0.76rem;
+  font-size: 0.72rem;
   font-weight: 600;
   color: var(--color-gold);
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
-.rel-secao h2 { font-size: 1.3rem; margin-bottom: 4px; }
-.rel-secao-sub { color: var(--color-text-light); margin-bottom: 16px; max-width: 760px; font-size: 0.88rem; }
+.rel-secao h2 { font-size: 1.15rem; margin-bottom: 3px; font-family: 'Inter', sans-serif; }
+.rel-secao-sub { color: var(--color-text-light); margin-bottom: 12px; max-width: 760px; font-size: 0.84rem; }
+.rel-secao + .rel-secao { margin-top: 20px; }
 
-/* Resumo executivo */
-.rel-resumo-lista { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 14px; }
-.rel-resumo-lista li {
-  display: flex;
-  gap: 14px;
-  background: var(--color-bg-alt);
+/* Cartão — agrupa um gráfico/tabela; várias cabem lado a lado num grid */
+.rel-bloco {
+  background: #fff;
+  border: 1px solid var(--color-border);
   border-radius: 10px;
-  padding: 16px 20px;
-  font-size: 1rem;
-  line-height: 1.5;
+  padding: 16px 18px;
+  box-shadow: 0 1px 2px rgba(46,46,46,.04);
 }
-.rel-resumo-lista li::before { content: '•'; color: var(--color-gold); font-weight: 700; flex-shrink: 0; }
+/* Blocos empilhados direto numa aba (fora de .rel-grid) ganham espaço entre si;
+   dentro de .rel-grid o espaçamento já vem do gap, sem desalinhar a grade. */
+.rel-secao > .rel-bloco + .rel-bloco,
+.rel-kpis + .rel-bloco,
+.rel-contas-grid + .rel-grid,
+table.rel-tabela + .rel-bloco {
+  margin-top: 16px;
+}
+.rel-bloco h3 {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--color-olive-dark);
+  margin: 0 0 12px;
+}
+.rel-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
 
-/* KPIs */
-.rel-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
-.rel-kpi { background: #fff; border: 1px solid var(--color-border); border-radius: 10px; padding: 18px 20px; box-shadow: var(--shadow); }
-.rel-kpi strong { display: block; font-family: 'Fraunces', serif; font-size: 1.5rem; color: var(--color-olive-dark); }
+/* KPIs — números em sans (mais suave que o serif de título) */
+.rel-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.rel-kpi { background: #fff; border: 1px solid var(--color-border); border-radius: 10px; padding: 14px 16px; }
+.rel-kpi strong { display: block; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 1.3rem; color: var(--color-olive-dark); letter-spacing: -0.01em; }
 .rel-kpi strong.neg { color: #b3261e; }
-.rel-kpi span { font-size: 0.82rem; color: var(--color-text-light); }
+.rel-kpi span { font-size: 0.78rem; color: var(--color-text-light); }
 
 /* Barras horizontais genéricas — marca interativa com tooltip no hover/foco */
-.rel-barras { display: flex; flex-direction: column; gap: 10px; }
+.rel-barras { display: flex; flex-direction: column; gap: 6px; }
 .rel-barra-linha {
   display: grid;
-  grid-template-columns: 220px 1fr 130px;
+  grid-template-columns: minmax(90px, 160px) 1fr auto;
   align-items: center;
-  gap: 14px;
-  padding: 4px 6px;
+  gap: 10px;
+  padding: 3px 6px;
   margin: 0 -6px;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: default;
   transition: background .12s ease;
 }
@@ -176,8 +192,8 @@
   outline: none;
 }
 .rel-barra-valor { white-space: nowrap; }
-.rel-barra-label { font-size: 0.9rem; color: var(--color-text); }
-.rel-barra-trilha { background: var(--color-bg-alt); border-radius: 4px; height: 14px; overflow: hidden; }
+.rel-barra-label { font-size: 0.84rem; color: var(--color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rel-barra-trilha { background: var(--color-bg-alt); border-radius: 4px; height: 10px; overflow: hidden; }
 .rel-barra-preenchimento {
   display: block;
   height: 100%;
@@ -189,7 +205,7 @@
 .rel-barra-linha:focus-visible .rel-barra-preenchimento { filter: brightness(1.12); }
 .rel-barra-preenchimento.saida { background: #b3734a; }
 .rel-barra-preenchimento.total { background: var(--color-gold); }
-.rel-barra-valor { font-size: 0.88rem; font-weight: 600; text-align: right; color: var(--color-olive-dark); }
+.rel-barra-valor { font-size: 0.82rem; font-weight: 600; text-align: right; color: var(--color-olive-dark); font-variant-numeric: tabular-nums; }
 .rel-barra-valor.neg { color: #b3261e; }
 
 /* Tooltip compartilhado (barras, dumbbell) */
@@ -210,7 +226,7 @@
   max-width: 260px;
 }
 .rel-tooltip.ativo { opacity: 1; }
-.rel-tooltip strong { display: block; font-size: 0.95rem; font-family: 'Fraunces', serif; }
+.rel-tooltip strong { display: block; font-size: 0.92rem; font-weight: 700; }
 .rel-tooltip span { display: block; color: var(--color-beige); margin-top: 2px; }
 .rel-tooltip small { display: block; color: var(--color-beige); opacity: .85; margin-top: 4px; font-size: 0.76rem; }
 
@@ -233,20 +249,20 @@
 .rel-ver-tabela .rel-tabela { margin-top: 12px; }
 
 /* Dumbbell (orçado -> realizado) */
-.rel-dumbbell { display: flex; flex-direction: column; gap: 14px; }
+.rel-dumbbell { display: flex; flex-direction: column; gap: 10px; }
 .rel-dumbbell-linha {
   display: grid;
-  grid-template-columns: 220px 1fr;
+  grid-template-columns: minmax(90px, 170px) 1fr;
   align-items: center;
-  gap: 14px;
-  padding: 4px 6px;
+  gap: 10px;
+  padding: 3px 6px;
   margin: 0 -6px;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: default;
 }
 .rel-dumbbell-linha:hover, .rel-dumbbell-linha:focus-visible { background: var(--color-bg-alt); outline: none; }
-.rel-dumbbell-label { font-size: 0.9rem; color: var(--color-text); }
-.rel-dumbbell-trilha { position: relative; height: 14px; }
+.rel-dumbbell-label { font-size: 0.84rem; color: var(--color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rel-dumbbell-trilha { position: relative; height: 12px; }
 .rel-dumbbell-trilha::before {
   content: '';
   position: absolute;
@@ -268,7 +284,7 @@
 .rel-dumbbell-ponto.orcado { background: var(--color-text-light); }
 .rel-dumbbell-ponto.realizado { background: var(--color-olive); }
 .rel-dumbbell-ponto.realizado.estourado { background: #b3261e; }
-.rel-dumbbell-legenda { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 18px; font-size: 0.8rem; color: var(--color-text-light); }
+.rel-dumbbell-legenda { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 14px; font-size: 0.76rem; color: var(--color-text-light); }
 .rel-dumbbell-legenda span { display: inline-flex; align-items: center; gap: 7px; }
 .rel-dumbbell-legenda i { display: inline-block; width: 11px; height: 11px; border-radius: 50%; }
 .rel-dumbbell-legenda i.orcado { background: var(--color-text-light); }
@@ -284,9 +300,9 @@
 .rel-tabela tbody tr:hover { background: var(--color-bg-alt); }
 
 /* Tabela genérica */
-.rel-tabela { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-.rel-tabela th, .rel-tabela td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--color-border); }
-.rel-tabela th { color: var(--color-olive-dark); font-weight: 600; background: var(--color-bg-alt); }
+.rel-tabela { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+.rel-tabela th, .rel-tabela td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--color-border); }
+.rel-tabela th { color: var(--color-olive-dark); font-weight: 600; background: var(--color-bg-alt); font-size: 0.78rem; }
 .rel-tabela tr.total td { font-weight: 700; border-top: 2px solid var(--color-olive); }
 .rel-tabela td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .rel-tabela td.num.neg { color: #b3261e; }
@@ -310,24 +326,16 @@
 }
 
 /* Contas / cards */
-.rel-contas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
-.rel-conta-card { background: #fff; border: 1px solid var(--color-border); border-radius: 10px; padding: 20px; box-shadow: var(--shadow); }
-.rel-conta-card h4 { margin: 0 0 8px; font-size: 1.05rem; }
-.rel-conta-card .saldo { font-family: 'Fraunces', serif; font-size: 1.6rem; color: var(--color-olive-dark); }
+.rel-contas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.rel-conta-card { background: #fff; border: 1px solid var(--color-border); border-radius: 10px; padding: 14px 16px; }
+.rel-conta-card h4 { margin: 0 0 6px; font-size: 0.88rem; font-weight: 600; color: var(--color-text); }
+.rel-conta-card .saldo { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 1.25rem; color: var(--color-olive-dark); letter-spacing: -0.01em; }
 .rel-conta-card .saldo.neg { color: #b3261e; }
-.rel-conta-card .linha { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--color-text-light); margin-top: 4px; }
+.rel-conta-card .linha { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--color-text-light); margin-top: 3px; }
 
-/* Próximos passos */
-.rel-passos { display: flex; flex-direction: column; gap: 14px; }
-.rel-passo { display: grid; grid-template-columns: 110px 130px 1fr; gap: 16px; align-items: start; background: var(--color-bg-alt); border-radius: 10px; padding: 16px 20px; }
-.rel-passo-prazo { font-weight: 700; color: var(--color-olive-dark); font-size: 0.9rem; }
-.rel-passo-resp { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-gold); font-weight: 600; }
-.rel-passo-corpo h4 { margin: 0 0 4px; font-size: 1rem; }
-.rel-passo-corpo p { margin: 0; font-size: 0.88rem; color: var(--color-text-light); }
+.rel-fonte { font-size: 0.76rem; color: var(--color-text-light); font-style: italic; border-top: 1px solid var(--color-border); padding-top: 12px; margin-top: 16px; }
 
-.rel-fonte { font-size: 0.8rem; color: var(--color-text-light); font-style: italic; border-top: 1px solid var(--color-border); padding-top: 16px; margin-top: 10px; }
-
-.subtitulo-sm { font-size: 1rem; font-weight: 600; color: var(--color-olive-dark); margin: 28px 0 14px; }
+.subtitulo-sm { font-size: 0.86rem; font-weight: 600; color: var(--color-olive-dark); margin: 18px 0 8px; }
 .subtitulo-sm:first-of-type { margin-top: 0; }
 
 @media (max-width: 900px) {

@@ -163,6 +163,12 @@
     }).join('')}</div>`;
   }
 
+  // Cartão — agrupa um gráfico/tabela com um título pequeno; vários cabem lado a
+  // lado numa grade (.rel-grid), deixando a aba mais compacta e densa em dados.
+  function cartao(titulo, conteudoHtml) {
+    return `<div class="rel-bloco"><h3>${escapeHtml(titulo)}</h3>${conteudoHtml}</div>`;
+  }
+
   // Envolve um gráfico com um <details> nativo mostrando os mesmos dados em
   // tabela — sempre existe uma forma de ler os valores exatos sem depender do hover.
   function comTabela(graficoHtml, colunas, linhas) {
@@ -354,7 +360,8 @@
     const cabecalhoHtml = cabecalho('Fechamento financeiro', r.cliente, r.periodo,
       `Preparado por ${r.preparadoPor || 'CM Soluções Financeiras'}${r.dataPreparo ? ` · ${r.dataPreparo}` : ''}`);
 
-    // KPIs
+    // ---- Visão geral: KPIs + formação do caixa juntos ----
+    const blocosVisaoGeral = [];
     if (r.kpis) {
       const k = r.kpis;
       const kpiItens = [
@@ -366,63 +373,54 @@
         k.sessoesRealizadas != null ? ['Sessões realizadas', k.sessoesRealizadas] : null,
         k.ticketMedio != null ? ['Ticket médio', fmtBRL(k.ticketMedio)] : null,
       ].filter(Boolean);
-      nav.push(['kpis', 'Indicadores do mês']);
-      secoes.push(secao('kpis', 'Números do mês', 'Indicadores do mês', '',
-        `<div class="rel-kpis">${kpiItens.map(([label, valor, neg]) =>
-          `<div class="rel-kpi"><strong class="${neg ? 'neg' : ''}">${valor}</strong><span>${escapeHtml(label)}</span></div>`
-        ).join('')}</div>`));
+      blocosVisaoGeral.push(`<div class="rel-kpis">${kpiItens.map(([label, valor, neg]) =>
+        `<div class="rel-kpi"><strong class="${neg ? 'neg' : ''}">${valor}</strong><span>${escapeHtml(label)}</span></div>`
+      ).join('')}</div>`);
     }
-
-    // Formação do caixa
     if (r.formacaoCaixa?.itens?.length) {
-      nav.push(['formacao', 'Formação do caixa']);
-      secoes.push(secao('formacao', 'Como o caixa se formou', 'Formação do resultado de caixa', r.formacaoCaixa.titulo || '',
-        comTabela(
-          graficoBarras(r.formacaoCaixa.itens),
-          ['Item', 'Valor'],
-          r.formacaoCaixa.itens.map((i) => [i.label, fmtBRL(i.valor)]),
-        )));
+      blocosVisaoGeral.push(cartao('Formação do caixa', comTabela(
+        graficoBarras(r.formacaoCaixa.itens),
+        ['Item', 'Valor'],
+        r.formacaoCaixa.itens.map((i) => [i.label, fmtBRL(i.valor)]),
+      )));
+    }
+    if (blocosVisaoGeral.length) {
+      nav.push(['visao-geral', 'Visão geral']);
+      secoes.push(secao('visao-geral', 'Resumo', 'Visão geral', '', blocosVisaoGeral.join('')));
     }
 
-    // Receita por serviço
+    // ---- Receita & despesas: grade de gráficos lado a lado ----
+    const blocosReceitaDespesas = [];
     if (r.receitaPorServico?.length) {
-      nav.push(['receita', 'Receita por serviço']);
-      secoes.push(secao('receita', 'De onde veio', 'Receita por serviço', '',
-        comTabela(
-          graficoBarras(r.receitaPorServico, { percentual: true }),
-          ['Serviço', 'Valor'],
-          r.receitaPorServico.map((i) => [i.label, fmtBRL(i.valor)]),
-        )));
+      blocosReceitaDespesas.push(cartao('Receita por serviço', comTabela(
+        graficoBarras(r.receitaPorServico, { percentual: true }),
+        ['Serviço', 'Valor'], r.receitaPorServico.map((i) => [i.label, fmtBRL(i.valor)]),
+      )));
     }
-
-    // Despesas por grupo
     if (r.despesasPorGrupo?.length) {
-      nav.push(['despesas-grupo', 'Despesas por grupo']);
-      secoes.push(secao('despesas-grupo', 'Para onde foi', 'Despesas por grupo', '',
-        comTabela(
-          graficoBarras(r.despesasPorGrupo, { negativo: true, percentual: true }),
-          ['Grupo', 'Valor'],
-          r.despesasPorGrupo.map((i) => [i.label, fmtBRL(i.valor)]),
-        )));
+      blocosReceitaDespesas.push(cartao('Despesas por grupo', comTabela(
+        graficoBarras(r.despesasPorGrupo, { negativo: true, percentual: true }),
+        ['Grupo', 'Valor'], r.despesasPorGrupo.map((i) => [i.label, fmtBRL(i.valor)]),
+      )));
     }
-
-    // Despesas por subcategoria
     if (r.despesasPorSubcategoria?.length) {
-      nav.push(['despesas-sub', 'Despesas por subcategoria']);
-      secoes.push(secao('despesas-sub', 'Detalhe', 'Despesas por subcategoria', '',
-        comTabela(
-          graficoBarras(r.despesasPorSubcategoria, { negativo: true, percentual: true }),
-          ['Subcategoria', 'Valor'],
-          r.despesasPorSubcategoria.map((i) => [i.label, fmtBRL(i.valor)]),
-        )));
+      blocosReceitaDespesas.push(cartao('Despesas por subcategoria', comTabela(
+        graficoBarras(r.despesasPorSubcategoria, { negativo: true, percentual: true }),
+        ['Subcategoria', 'Valor'], r.despesasPorSubcategoria.map((i) => [i.label, fmtBRL(i.valor)]),
+      )));
+    }
+    if (blocosReceitaDespesas.length) {
+      nav.push(['receita-despesas', 'Receita & despesas']);
+      secoes.push(secao('receita-despesas', 'De onde veio, pra onde foi', 'Receita & despesas', '',
+        `<div class="rel-grid">${blocosReceitaDespesas.join('')}</div>`));
     }
 
-    // Produção por profissional
+    // ---- Equipe ----
     if (r.producaoPorProfissional?.length) {
       const totalSessoes = r.producaoPorProfissional.reduce((s, p) => s + Number(p.sessoes || 0), 0);
       const totalProd = r.producaoPorProfissional.reduce((s, p) => s + Number(p.produzido || 0), 0);
       const totalReceb = r.producaoPorProfissional.reduce((s, p) => s + Number(p.recebido || 0), 0);
-      nav.push(['equipe', 'Produção por profissional']);
+      nav.push(['equipe', 'Equipe']);
       secoes.push(secao('equipe', 'Equipe', 'Produção e recebimento por profissional', 'Clique no cabeçalho pra ordenar.', `
         <table class="rel-tabela" data-sortable>
           <thead><tr>
@@ -452,10 +450,10 @@
         </table>`));
     }
 
-    // Caixa por conta
+    // ---- Contas: caixa por conta + contas a pagar juntos ----
+    const blocosContas = [];
     if (r.caixaPorConta?.length) {
-      nav.push(['contas', 'Caixa por conta']);
-      secoes.push(secao('contas', 'Contas', 'Movimento de caixa por conta', '', `
+      blocosContas.push(`
         <div class="rel-contas-grid">
           ${r.caixaPorConta.map((c) => {
             const saldo = Number(c.entradas || 0) - Number(c.saidas || 0);
@@ -467,10 +465,30 @@
                 <div class="linha"><span>Saídas</span><span>${fmtBRL(-Math.abs(c.saidas))}</span></div>
               </div>`;
           }).join('')}
-        </div>`));
+        </div>`);
+    }
+    if (r.contasAPagarPorMes?.length || r.contasAPagarPorCategoria?.length) {
+      const blocosAPagar = [];
+      if (r.contasAPagarPorMes?.length) {
+        blocosAPagar.push(cartao('Contas a pagar por mês', comTabela(
+          graficoBarras(r.contasAPagarPorMes.map((m) => ({ label: m.mes, valor: m.valor })), { negativo: true }),
+          ['Mês', 'Valor'], r.contasAPagarPorMes.map((m) => [m.mes, fmtBRL(m.valor)]),
+        )));
+      }
+      if (r.contasAPagarPorCategoria?.length) {
+        blocosAPagar.push(cartao('Contas a pagar por categoria', comTabela(
+          graficoBarras(r.contasAPagarPorCategoria.map((c) => ({ label: c.label, valor: c.valor })), { negativo: true, percentual: true }),
+          ['Categoria', 'Valor'], r.contasAPagarPorCategoria.map((c) => [c.label, fmtBRL(c.valor)]),
+        )));
+      }
+      blocosContas.push(`<div class="rel-grid">${blocosAPagar.join('')}</div>`);
+    }
+    if (blocosContas.length) {
+      nav.push(['contas', 'Contas']);
+      secoes.push(secao('contas', 'Contas', 'Caixa por conta e contas a pagar', '', blocosContas.join('')));
     }
 
-    // Estoque
+    // ---- Estoque ----
     if (r.estoque?.length) {
       const totalQtd = r.estoque.reduce((s, e) => s + Number(e.quantidade || 0), 0);
       const totalValor = r.estoque.reduce((s, e) => s + Number(e.valorTotal || 0), 0);
@@ -496,23 +514,7 @@
         </table>`));
     }
 
-    // Contas a pagar
-    if (r.contasAPagarPorMes?.length || r.contasAPagarPorCategoria?.length) {
-      nav.push(['apagar', 'Contas a pagar']);
-      const porMes = r.contasAPagarPorMes?.length ? comTabela(
-        graficoBarras(r.contasAPagarPorMes.map((m) => ({ label: m.mes, valor: m.valor })), { negativo: true }),
-        ['Mês', 'Valor'], r.contasAPagarPorMes.map((m) => [m.mes, fmtBRL(m.valor)]),
-      ) : '';
-      const porCat = r.contasAPagarPorCategoria?.length ? comTabela(
-        graficoBarras(r.contasAPagarPorCategoria.map((c) => ({ label: c.label, valor: c.valor })), { negativo: true, percentual: true }),
-        ['Categoria', 'Valor'], r.contasAPagarPorCategoria.map((c) => [c.label, fmtBRL(c.valor)]),
-      ) : '';
-      secoes.push(secao('apagar', 'Próximos meses', 'Contas a pagar em aberto', '', `
-        ${porMes ? `<h3 class="subtitulo-sm">Por mês</h3>${porMes}` : ''}
-        ${porCat ? `<h3 class="subtitulo-sm">Por categoria</h3>${porCat}` : ''}`));
-    }
-
-    // Pendências
+    // ---- Pendências ----
     if (r.pendencias?.length) {
       nav.push(['pendencias', 'Pendências']);
       secoes.push(secao('pendencias', 'Pontos de atenção', 'Pendências para validação do cliente', '', `
@@ -543,10 +545,7 @@
       const totalDesvio = totalRealizado - totalOrcado;
       nav.push(['categorias', 'Orçado vs. Realizado']);
       secoes.push(secao('categorias', 'Por categoria', 'Orçado vs. Realizado', 'O ponto cinza é o orçado, o colorido é o realizado — vermelho quando ficou fora do orçado.',
-        graficoDumbbell(r.categorias)));
-
-      nav.push(['categorias-detalhe', 'Desvio por categoria']);
-      secoes.push(secao('categorias-detalhe', 'Detalhe', 'Desvio por categoria', 'Clique no cabeçalho pra ordenar.', `
+        cartao('Orçado vs. realizado', graficoDumbbell(r.categorias)) + cartao('Desvio por categoria', `
         <table class="rel-tabela" data-sortable>
           <thead><tr>
             <th data-sort="texto">Categoria</th>
@@ -581,7 +580,7 @@
               <td class="num ${totalDesvio < 0 ? 'neg' : ''}">${totalOrcado ? fmtPct(totalDesvio / totalOrcado) : '—'}</td>
             </tr>
           </tbody>
-        </table>`));
+        </table>`)));
     }
 
     const fontesHtml = r.fontes ? `<p class="rel-fonte">${escapeHtml(r.fontes)}</p>` : '';
@@ -605,7 +604,19 @@
       const totalComissao = r.comissoes.reduce((s, c) => s + Number(c.valorComissao || 0), 0);
       const totalDescontos = r.comissoes.reduce((s, c) => s + Number(c.descontos || 0), 0);
       const totalLiquido = r.comissoes.reduce((s, c) => s + Number(c.valorLiquido || 0), 0);
-      nav.push(['comissoes', 'Comissões por serviço']);
+      const porPrestador = Object.values(r.comissoes.reduce((acc, c) => {
+        const chave = c.prestador || '—';
+        if (!acc[chave]) acc[chave] = { prestador: chave, valor: 0 };
+        acc[chave].valor += Number(c.valorLiquido || 0);
+        return acc;
+      }, {}));
+      const resumoPrestador = porPrestador.length > 1 ? cartao('Comissão líquida por prestador', comTabela(
+        graficoBarras(porPrestador.map((p) => ({ label: p.prestador, valor: p.valor })), { percentual: true }),
+        ['Prestador', 'Comissão líquida'],
+        porPrestador.map((p) => [p.prestador, fmtBRL(p.valor)]),
+      )) : '';
+
+      nav.push(['comissoes', 'Comissões']);
       secoes.push(secao('comissoes', 'Detalhe', 'Comissões por serviço', 'Clique no cabeçalho pra ordenar.', `
         <table class="rel-tabela" data-sortable>
           <thead><tr>
@@ -637,23 +648,7 @@
               <td class="num">${fmtBRL(totalLiquido)}</td>
             </tr>
           </tbody>
-        </table>`));
-
-      const porPrestador = Object.values(r.comissoes.reduce((acc, c) => {
-        const chave = c.prestador || '—';
-        if (!acc[chave]) acc[chave] = { prestador: chave, valor: 0 };
-        acc[chave].valor += Number(c.valorLiquido || 0);
-        return acc;
-      }, {}));
-      if (porPrestador.length > 1) {
-        nav.push(['por-prestador', 'Por prestador']);
-        secoes.push(secao('por-prestador', 'Resumo', 'Comissão líquida por prestador', '',
-          comTabela(
-            graficoBarras(porPrestador.map((p) => ({ label: p.prestador, valor: p.valor })), { percentual: true }),
-            ['Prestador', 'Comissão líquida'],
-            porPrestador.map((p) => [p.prestador, fmtBRL(p.valor)]),
-          )));
-      }
+        </table>${resumoPrestador}`));
     }
 
     const fontesHtml = r.fontes ? `<p class="rel-fonte">${escapeHtml(r.fontes)}</p>` : '';
