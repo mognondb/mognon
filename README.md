@@ -26,7 +26,8 @@ legacy-jekyll-boilerplate/  Arquivos antigos do scaffold padrão do GitHub Pages
 
 1. **Hero** — apresentação rápida da CM.
 2. **Sobre** — quem é a CM e como ela trabalha.
-3. **Serviços** — os níveis de apoio (Implantação, Acompanhamento, Assistência, Gestão) e o Diagnóstico Financeiro gratuito.
+3. **Serviços** — os níveis de apoio (Implantação, Acompanhamento, Assistência, Gestão) e o
+   Diagnóstico Financeiro gratuito (abre um formulário em modal — veja mais abaixo).
 4. **Portfólio** — dashboards em Power BI, carregados do servidor do painel (ou de
    `assets/data/dashboards.json` como fallback).
 5. **Infoprodutos** — planilhas gratuitas e produtos pagos (Hotmart), carregados do
@@ -125,17 +126,46 @@ Essas senhas ficam guardadas no Cloudflare KV com hash (PBKDF2), nunca em texto 
 diferente do login mestre, que continua sendo um secret do Worker. Criar, editar e
 excluir usuários exige estar logado como administrador.
 
+### Diagnóstico Financeiro (captação de leads qualificados)
+
+O botão "Solicitar diagnóstico grátis" (seção Serviços) abre um formulário em modal —
+diferente do formulário de contato geral, ele pergunta sobre o negócio do visitante
+(ramo, porte, como o financeiro é controlado hoje, maior dificuldade, o que busca
+alcançar, urgência) sem pedir nenhum dado sensível. Isso dá à CM um contato bem mais
+concreto pra estudar antes da conversa.
+
+- Cada envio é salvo no Cloudflare KV e aparece na aba **"Diagnósticos"** do painel
+  (`admin/index.html`), com todos os campos, link direto de e-mail e de WhatsApp pra
+  responder rápido. Dá pra marcar como lido/novo e remover.
+- Também dispara (opcionalmente) um e-mail de aviso pra `contato@cmfinanceiro.com` via
+  Formspree — veja **item 1 abaixo** pra configurar.
+- O formulário tem um campo-armadilha (honeypot) invisível contra spam automatizado:
+  bots que preenchem todos os campos de um formulário geralmente preenchem esse também,
+  e a submissão é descartada (no servidor, mesmo que o JavaScript do navegador seja
+  contornado).
+- É uma rota pública do Worker (`/api/diagnostico`, só o POST — listar e remover
+  continuam exigindo login de administrador), então não depende do admin estar
+  logado em lugar nenhum pra funcionar.
+
 ## Configurações pendentes (precisam dos seus dados reais)
 
-### 1. Formulário de contato (relatório)
-O formulário em `index.html` (`id="formRelatorio"`) está apontando para:
+### 1. Formulário de contato (relatório) e Diagnóstico Financeiro
+O formulário geral em `index.html` (`id="formRelatorio"`) está apontando para:
 ```html
 action="https://formspree.io/f/SEU_FORM_ID"
 ```
 Para funcionar de verdade:
 1. Crie uma conta gratuita em https://formspree.io
-2. Crie um formulário e copie o ID gerado
-3. Substitua `SEU_FORM_ID` pelo ID real
+2. Crie um formulário, configure o e-mail de destino como `contato@cmfinanceiro.com`
+   e copie o endpoint gerado (`https://formspree.io/f/xxxxxxx`)
+3. Substitua `SEU_FORM_ID` pelo ID real em `index.html`
+
+**Diagnóstico Financeiro** (o formulário em modal) usa um endpoint **separado** — crie
+um segundo formulário no Formspree (mesmo processo acima, pode ser o mesmo e-mail de
+destino) e cole o endpoint na variável de ambiente `FORMSPREE_DIAGNOSTICO_URL` do
+Worker no Cloudflare (Settings → Variables → Add variable; não precisa ser "Secret").
+Sem essa variável, as respostas continuam sendo salvas e aparecendo no painel — só o
+e-mail automático de aviso não é enviado.
 
 Alternativas ao Formspree: Netlify Forms, Google Forms (embutido), ou um backend próprio.
 
@@ -153,16 +183,18 @@ Siga `admin/README-servidor.md` para publicar o Cloudflare Worker que autentica 
 painel e guarda os dados (gratuito, ~5 min, sem token nenhum). Sem isso, o painel
 fica no ar mas não consegue carregar nem salvar nada.
 
-**Se você já tinha publicado o Worker antes:** o `admin/worker.js` ganhou as rotas de
-clientes e relatórios (`/api/clientes`, `/api/cliente`, `/api/relatorios`,
-`/api/relatorio`) — toda vez que o arquivo for atualizado, copie o conteúdo novo para
-o Worker no Cloudflare (Edit code → colar → Save and Deploy). Nenhuma variável nova é
-necessária, reaproveita `ADMIN_USER`/`ADMIN_PASS`/`CM_DATA`.
+**Se você já tinha publicado o Worker antes:** toda vez que `admin/worker.js` for
+atualizado (o arquivo ganhou rotas novas várias vezes — clientes/relatórios, usuários,
+e agora Diagnóstico Financeiro), copie o conteúdo novo para o Worker no Cloudflare
+(Edit code → colar → Save and Deploy). Nenhuma variável nova é obrigatória — só o
+`FORMSPREE_DIAGNOSTICO_URL` do item 1 acima, que é opcional.
 
-### 5. Site público mostrar os dados em tempo real (opcional)
-Por padrão o site lê `assets/data/*.json` (arquivos fixos). Depois de publicar o
-servidor (item 4), me passe a URL dele que eu configuro `ADMIN_API_URL` em
-`assets/js/main.js` para o site buscar os dados mais recentes direto do servidor.
+### 5. Site público já busca os dados em tempo real
+`assets/js/main.js` (constante `ADMIN_API_URL`) já aponta pro Worker publicado — o
+Portfólio e os Infoprodutos do site mostram direto o que está cadastrado no painel
+(sem precisar de novo deploy a cada alteração), com `assets/data/*.json` só como
+reserva caso o servidor esteja fora do ar. O formulário de Diagnóstico Financeiro
+depende dessa mesma conexão pra funcionar.
 
 ## Publicação
 

@@ -14,6 +14,11 @@
  *   ADMIN_USER   usuário de login do painel (secret)
  *   ADMIN_PASS   senha de login do painel (secret)
  *   ALLOWED_ORIGIN  (opcional) origem do site publicado, usada no CORS. Padrão: "*"
+ *   FORMSPREE_DIAGNOSTICO_URL  (opcional) endpoint do Formspree (ex:
+ *     https://formspree.io/f/xxxxxxx) pra onde o Worker envia os dados de cada
+ *     Diagnóstico Financeiro preenchido no site, disparando o e-mail de aviso
+ *     pra equipe CM. Sem essa variável, as respostas continuam sendo salvas
+ *     normalmente (aparecem no painel) — só o e-mail automático não é enviado.
  */
 
 // Conteúdo inicial: usado enquanto o KV ainda não tem nada salvo, para o site
@@ -114,7 +119,7 @@ const PADRAO = {
 function corsHeaders(env) {
   return {
     'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || '*',
-    'Access-Control-Allow-Methods': 'GET, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Authorization, Content-Type',
   };
 }
@@ -220,6 +225,104 @@ export default {
       return sessao
         ? jsonResponse({ ok: true, papel: sessao.papel, nome: sessao.nome, clienteId: sessao.clienteId, relatorioId: sessao.relatorioId }, 200, env)
         : jsonResponse({ message: 'Usuário ou senha inválidos' }, 401, env);
+    }
+
+    // Diagnóstico Financeiro: formulário público do site (qualquer visitante pode
+    // enviar, sem login), mas só o admin pode listar ou remover as respostas.
+    if (url.pathname === '/api/diagnostico') {
+      if (request.method === 'POST') {
+        let dados;
+        try {
+          dados = await request.json();
+        } catch {
+          return jsonResponse({ message: 'JSON inválido' }, 400, env);
+        }
+
+        // Campo-armadilha: só bots preenchem. Finge sucesso e descarta.
+        if (dados.website) return jsonResponse({ ok: true }, 200, env);
+
+        if (!dados.nome || !dados.email) {
+          return jsonResponse({ message: 'Informe nome e e-mail' }, 400, env);
+        }
+
+        const limitar = (v, max) => String(v ?? '').slice(0, max).trim();
+        const registro = {
+          id: `diag-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          nome: limitar(dados.nome, 120),
+          email: limitar(dados.email, 160),
+          telefone: limitar(dados.telefone, 40),
+          empresa: limitar(dados.empresa, 120),
+          ramo: limitar(dados.ramo, 80),
+          colaboradores: limitar(dados.colaboradores, 40),
+          controleAtual: limitar(dados.controleAtual, 80),
+          dificuldade: limitar(dados.dificuldade, 160),
+          objetivo: limitar(dados.objetivo, 160),
+          urgencia: limitar(dados.urgencia, 60),
+          mensagem: limitar(dados.mensagem, 1000),
+          lido: false,
+          criadoEm: new Date().toISOString(),
+        };
+
+        const indice = (await env.CM_DATA.get('diagnosticos_index', 'json')) || [];
+        indice.unshift(registro);
+        await env.CM_DATA.put('diagnosticos_index', JSON.stringify(indice));
+
+        // E-mail de notificação (best-effort via Formspree) — se não estiver
+        // configurado, ou falhar, a resposta já está salva de qualquer forma.
+        if (env.FORMSPREE_DIAGNOSTICO_URL) {
+          try {
+            await fetch(env.FORMSPREE_DIAGNOSTICO_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+              body: JSON.stringify({ _subject: `Novo diagnóstico financeiro — ${registro.nome}`, ...registro }),
+            });
+          } catch {
+            // não bloqueia o cadastro se o e-mail falhar
+          }
+        }
+
+        return jsonResponse({ ok: true }, 200, env);
+      }
+
+      if (request.method === 'DELETE') {
+        const sessao = await autenticarSessao(request, env);
+        if (!sessao || sessao.papel !== 'admin') return jsonResponse({ message: 'Acesso negado' }, 403, env);
+        const id = url.searchParams.get('id');
+        if (!id) return jsonResponse({ message: 'Parâmetro "id" obrigatório' }, 400, env);
+        const indice = ((await env.CM_DATA.get('diagnosticos_index', 'json')) || []).filter((d) => d.id !== id);
+        await env.CM_DATA.put('diagnosticos_index', JSON.stringify(indice));
+        return jsonResponse({ ok: true }, 200, env);
+      }
+
+      // Marcar como lido/não lido (feito pelo admin ao revisar as respostas).
+      if (request.method === 'PATCH') {
+        const sessao = await autenticarSessao(request, env);
+        if (!sessao || sessao.papel !== 'admin') return jsonResponse({ message: 'Acesso negado' }, 403, env);
+        const id = url.searchParams.get('id');
+        if (!id) return jsonResponse({ message: 'Parâmetro "id" obrigatório' }, 400, env);
+        let corpo;
+        try {
+          corpo = await request.json();
+        } catch {
+          return jsonResponse({ message: 'JSON inválido' }, 400, env);
+        }
+        const indice = (await env.CM_DATA.get('diagnosticos_index', 'json')) || [];
+        const posicao = indice.findIndex((d) => d.id === id);
+        if (posicao < 0) return jsonResponse({ message: 'Não encontrado' }, 404, env);
+        indice[posicao].lido = corpo.lido !== false;
+        await env.CM_DATA.put('diagnosticos_index', JSON.stringify(indice));
+        return jsonResponse(indice[posicao], 200, env);
+      }
+
+      return jsonResponse({ message: 'Método não suportado' }, 405, env);
+    }
+
+    if (url.pathname === '/api/diagnosticos') {
+      if (request.method !== 'GET') return jsonResponse({ message: 'Método não suportado' }, 405, env);
+      const sessao = await autenticarSessao(request, env);
+      if (!sessao || sessao.papel !== 'admin') return jsonResponse({ message: 'Acesso negado' }, 403, env);
+      const indice = (await env.CM_DATA.get('diagnosticos_index', 'json')) || [];
+      return jsonResponse(indice, 200, env);
     }
 
     // Clientes, relatórios/dashboards de apresentação e usuários do painel: sempre

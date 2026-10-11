@@ -202,6 +202,7 @@
     TIPOS.forEach(carregarLista);
     carregarClientes();
     carregarUsuarios();
+    carregarDiagnosticos();
   }
 
   // ---------- Carregar / Renderizar listas ----------
@@ -784,5 +785,148 @@
       feedback.className = 'admin-feedback error';
     }
   });
+
+  // ---------- Diagnósticos (respostas do formulário público do site) ----------
+
+  const CAMPOS_DIAGNOSTICO = [
+    ['empresa', 'Empresa'],
+    ['email', 'E-mail'],
+    ['telefone', 'WhatsApp'],
+    ['ramo', 'Ramo de atuação'],
+    ['colaboradores', 'Pessoas no negócio'],
+    ['controleAtual', 'Controle financeiro hoje'],
+    ['dificuldade', 'Maior dificuldade'],
+    ['objetivo', 'O que busca alcançar'],
+    ['urgencia', 'Urgência'],
+    ['mensagem', 'Mensagem'],
+  ];
+  const diagnosticosState = { itens: [] };
+
+  async function apiDiagnosticos() {
+    const res = await fetch(`${config.apiUrl}/api/diagnosticos`, { headers: { Authorization: authHeader } });
+    const body = await res.json().catch(() => ([]));
+    if (!res.ok) throw new Error(body.message || `Erro (HTTP ${res.status})`);
+    return body;
+  }
+  async function apiRemoverDiagnostico(id) {
+    const res = await fetch(`${config.apiUrl}/api/diagnostico?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { Authorization: authHeader },
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.message || `Erro (HTTP ${res.status})`);
+    return body;
+  }
+  async function apiMarcarDiagnostico(id, lido) {
+    const res = await fetch(`${config.apiUrl}/api/diagnostico?id=${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lido }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.message || `Erro (HTTP ${res.status})`);
+    return body;
+  }
+
+  async function carregarDiagnosticos() {
+    const lista = document.getElementById('listaDiagnosticos');
+    const feedback = document.getElementById('feedbackDiagnosticos');
+    lista.innerHTML = '<p class="loading-placeholder">Carregando...</p>';
+    feedback.textContent = '';
+    feedback.className = 'admin-feedback';
+    try {
+      diagnosticosState.itens = await apiDiagnosticos();
+      renderListaDiagnosticos();
+    } catch (err) {
+      lista.innerHTML = '';
+      feedback.textContent = err.message;
+      feedback.className = 'admin-feedback error';
+    }
+  }
+
+  function renderListaDiagnosticos() {
+    const lista = document.getElementById('listaDiagnosticos');
+    if (diagnosticosState.itens.length === 0) {
+      lista.innerHTML = '<p class="loading-placeholder">Nenhum diagnóstico recebido ainda.</p>';
+      return;
+    }
+    lista.innerHTML = diagnosticosState.itens.map((d) => `
+      <div class="admin-item ${d.lido ? '' : 'novo'}" data-id="${escapeHtml(d.id)}">
+        <div class="admin-item-info">
+          <h4>${escapeHtml(d.nome)}${d.empresa ? ` <small>— ${escapeHtml(d.empresa)}</small>` : ''}</h4>
+          <p>${escapeHtml(d.ramo || '—')} · ${escapeHtml(d.dificuldade || '—')}</p>
+          <span class="admin-item-meta">${d.criadoEm ? new Date(d.criadoEm).toLocaleString('pt-BR') : ''}${!d.lido ? ' · Novo' : ''}</span>
+        </div>
+        <div class="admin-item-actions">
+          <button class="btn btn-ghost btn-sm" data-acao="ver">Ver</button>
+          <button class="btn btn-ghost btn-sm" data-acao="alternar-lido">${d.lido ? 'Marcar como novo' : 'Marcar como lido'}</button>
+          <button class="btn btn-outline btn-sm" data-acao="remover">Remover</button>
+        </div>
+      </div>`).join('');
+
+    lista.querySelectorAll('.admin-item').forEach((el) => {
+      const id = el.dataset.id;
+      el.querySelector('[data-acao="ver"]').addEventListener('click', () => abrirDetalheDiagnostico(id));
+      el.querySelector('[data-acao="alternar-lido"]').addEventListener('click', () => alternarLidoDiagnostico(id));
+      el.querySelector('[data-acao="remover"]').addEventListener('click', () => removerDiagnostico(id));
+    });
+  }
+
+  function abrirDetalheDiagnostico(id) {
+    const d = diagnosticosState.itens.find((i) => i.id === id);
+    if (!d) return;
+    document.getElementById('ddNome').textContent = d.nome;
+    document.getElementById('ddConteudo').innerHTML = `<ul class="admin-preview-lista">${
+      CAMPOS_DIAGNOSTICO.filter(([campo]) => d[campo])
+        .map(([campo, label]) => `<li><strong>${escapeHtml(label)}:</strong> ${escapeHtml(d[campo])}</li>`)
+        .join('')
+    }</ul>`;
+
+    document.getElementById('ddEmailLink').href = `mailto:${encodeURIComponent(d.email || '')}`;
+    const whatsLink = document.getElementById('ddWhatsLink');
+    const telDigits = (d.telefone || '').replace(/\D/g, '');
+    if (telDigits) {
+      whatsLink.href = `https://wa.me/55${telDigits}`;
+      whatsLink.hidden = false;
+    } else {
+      whatsLink.hidden = true;
+    }
+
+    document.getElementById('modalDiagnosticoDetalhe').hidden = false;
+    if (!d.lido) alternarLidoDiagnostico(id, true);
+  }
+  document.getElementById('btnFecharDiagnosticoDetalhe').addEventListener('click', () => {
+    document.getElementById('modalDiagnosticoDetalhe').hidden = true;
+  });
+
+  async function alternarLidoDiagnostico(id, forcarLido) {
+    const d = diagnosticosState.itens.find((i) => i.id === id);
+    if (!d) return;
+    const feedback = document.getElementById('feedbackDiagnosticos');
+    const novoValor = forcarLido !== undefined ? forcarLido : !d.lido;
+    try {
+      await apiMarcarDiagnostico(id, novoValor);
+      d.lido = novoValor;
+      renderListaDiagnosticos();
+    } catch (err) {
+      feedback.textContent = err.message;
+      feedback.className = 'admin-feedback error';
+    }
+  }
+
+  async function removerDiagnostico(id) {
+    if (!confirm('Remover este diagnóstico definitivamente?')) return;
+    const feedback = document.getElementById('feedbackDiagnosticos');
+    try {
+      await apiRemoverDiagnostico(id);
+      diagnosticosState.itens = diagnosticosState.itens.filter((d) => d.id !== id);
+      renderListaDiagnosticos();
+    } catch (err) {
+      feedback.textContent = err.message;
+      feedback.className = 'admin-feedback error';
+    }
+  }
+
+  document.getElementById('btnRecarregarDiagnosticos').addEventListener('click', carregarDiagnosticos);
 
 })();

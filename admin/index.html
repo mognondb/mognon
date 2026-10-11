@@ -48,6 +48,7 @@
     <button class="admin-tab" data-tab="dashboards">Dashboards (Portfólio)</button>
     <button class="admin-tab" data-tab="clientes">Clientes</button>
     <button class="admin-tab" data-tab="usuarios">Usuários</button>
+    <button class="admin-tab" data-tab="diagnosticos">Diagnósticos</button>
   </nav>
 
   <main class="admin-main">
@@ -120,6 +121,24 @@
       </div>
       <p class="admin-feedback" id="feedbackUsuarios" role="status"></p>
       <div class="admin-lista" id="listaUsuarios">
+        <p class="loading-placeholder">Carregando...</p>
+      </div>
+    </section>
+
+    <!-- TAB DIAGNÓSTICOS -->
+    <section class="admin-tab-panel" id="tab-diagnosticos" hidden>
+      <p class="admin-field-hint" style="margin-bottom:16px;">
+        Respostas do formulário "Diagnóstico Financeiro" do site — a cada envio, a CM
+        recebe um e-mail de aviso e a resposta completa aparece aqui.
+      </p>
+      <div class="admin-toolbar">
+        <div></div>
+        <div class="admin-toolbar-actions">
+          <button class="btn btn-ghost btn-sm" id="btnRecarregarDiagnosticos">Recarregar</button>
+        </div>
+      </div>
+      <p class="admin-feedback" id="feedbackDiagnosticos" role="status"></p>
+      <div class="admin-lista" id="listaDiagnosticos">
         <p class="loading-placeholder">Carregando...</p>
       </div>
     </section>
@@ -286,6 +305,19 @@
         <button type="submit" class="btn btn-primary">Salvar usuário</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- MODAL: DETALHE DO DIAGNÓSTICO -->
+<div class="admin-modal" id="modalDiagnosticoDetalhe" hidden>
+  <div class="admin-modal-box admin-modal-box-wide">
+    <h2>Diagnóstico — <span id="ddNome"></span></h2>
+    <div id="ddConteudo"></div>
+    <div class="admin-modal-actions">
+      <a id="ddEmailLink" class="btn btn-outline" href="#">Enviar e-mail</a>
+      <a id="ddWhatsLink" class="btn btn-outline" href="#" target="_blank" rel="noopener" hidden>Abrir WhatsApp</a>
+      <button type="button" class="btn btn-primary" id="btnFecharDiagnosticoDetalhe">Fechar</button>
+    </div>
   </div>
 </div>
 

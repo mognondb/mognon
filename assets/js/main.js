@@ -50,11 +50,12 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-// Endereço do servidor (Cloudflare Worker) do painel /admin/. Quando configurado,
-// o site busca os dados mais recentes ali; se não estiver configurado (ou a
-// chamada falhar), cai de volta para os arquivos estáticos em assets/data/.
-// Veja admin/README-servidor.md.
-const ADMIN_API_URL = '';
+// Endereço do servidor (Cloudflare Worker) do painel /admin/ — não é segredo,
+// só a senha de login é. O site busca os dados mais recentes ali (infoprodutos,
+// dashboards do portfólio, e o formulário de Diagnóstico Financeiro); se a
+// chamada falhar, infoprodutos/dashboards caem de volta para os arquivos
+// estáticos em assets/data/. Veja admin/README-servidor.md.
+const ADMIN_API_URL = 'https://bold-forest-84c8fff.mognon-db.workers.dev';
 
 async function buscarDados(tipo, caminhoLocal) {
   if (ADMIN_API_URL) {
@@ -95,7 +96,6 @@ async function carregarInfoprodutos() {
       return `
         <div class="card card-info">
           <span class="badge ${badgeClass}">${badgeTexto}</span>
-          <div class="card-icon">${escapeHtml(item.icone || '📦')}</div>
           <h3>${escapeHtml(item.nome)}</h3>
           <p>${escapeHtml(item.descricao)}</p>
           ${botao}
@@ -202,3 +202,77 @@ form.addEventListener('submit', async (e) => {
     submitBtn.textContent = 'Enviar solicitação';
   }
 });
+
+// Modal + formulário do Diagnóstico Financeiro
+const modalDiagnostico = document.getElementById('modalDiagnostico');
+const formDiagnostico = document.getElementById('formDiagnostico');
+const diagnosticoFeedback = document.getElementById('diagnosticoFeedback');
+
+function abrirModalDiagnostico() {
+  if (!modalDiagnostico) return;
+  modalDiagnostico.hidden = false;
+  document.getElementById('dNome')?.focus();
+}
+function fecharModalDiagnostico() {
+  if (!modalDiagnostico) return;
+  modalDiagnostico.hidden = true;
+}
+
+document.querySelectorAll('[data-abrir-diagnostico]').forEach((el) => {
+  el.addEventListener('click', (e) => {
+    e.preventDefault();
+    abrirModalDiagnostico();
+  });
+});
+document.getElementById('btnFecharDiagnostico')?.addEventListener('click', fecharModalDiagnostico);
+modalDiagnostico?.addEventListener('click', (e) => {
+  if (e.target === modalDiagnostico) fecharModalDiagnostico();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && modalDiagnostico && !modalDiagnostico.hidden) fecharModalDiagnostico();
+});
+
+if (formDiagnostico) {
+  formDiagnostico.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    diagnosticoFeedback.textContent = '';
+    diagnosticoFeedback.className = 'form-feedback';
+
+    const dados = Object.fromEntries(new FormData(formDiagnostico).entries());
+    if (dados.website) {
+      // campo-armadilha preenchido: provavelmente um bot — finge sucesso, não envia nada.
+      diagnosticoFeedback.textContent = 'Diagnóstico enviado! Em breve entraremos em contato.';
+      diagnosticoFeedback.classList.add('success');
+      formDiagnostico.reset();
+      setTimeout(fecharModalDiagnostico, 1800);
+      return;
+    }
+
+    const btn = formDiagnostico.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+
+    try {
+      const res = await fetch(`${ADMIN_API_URL}/api/diagnostico`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dados),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.message || 'Não foi possível enviar agora.');
+
+      diagnosticoFeedback.textContent = 'Diagnóstico enviado! Em breve entraremos em contato.';
+      diagnosticoFeedback.classList.add('success');
+      formDiagnostico.reset();
+      setTimeout(fecharModalDiagnostico, 1800);
+    } catch (err) {
+      diagnosticoFeedback.textContent = err instanceof TypeError
+        ? 'Não foi possível conectar ao servidor agora. Tente novamente em instantes.'
+        : err.message;
+      diagnosticoFeedback.classList.add('error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Enviar diagnóstico';
+    }
+  });
+}

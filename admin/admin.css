@@ -150,6 +150,7 @@
 }
 .admin-item:hover { box-shadow: 0 2px 8px rgba(46,46,46,.06); }
 .admin-item.inativo { opacity: 0.55; }
+.admin-item.novo { border-left: 3px solid var(--color-gold); }
 
 .admin-item-icon { font-size: 1.4rem; }
 
