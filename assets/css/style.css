@@ -10,7 +10,7 @@
   --color-text: var(--color-graphite);
   --color-text-light: #6b6b63;
   --color-border: #e0dacf;
-  --radius: 12px;
+  --radius: 14px;
   --shadow: 0 10px 30px rgba(46, 46, 46, 0.08);
   --max-width: 1140px;
 }
@@ -27,12 +27,13 @@ body {
   line-height: 1.6;
 }
 
-h1, h2, h3 {
+h1, h2, h3, h4 {
   font-family: 'Fraunces', 'Inter', serif;
-  font-weight: 600;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   color: var(--color-olive-dark);
   margin: 0 0 .5em;
-  line-height: 1.2;
+  line-height: 1.25;
 }
 
 p { margin: 0 0 1em; }
@@ -187,7 +188,8 @@ img { max-width: 100%; display: block; }
 
 .hero h1 {
   color: #fff;
-  font-size: 2.4rem;
+  font-size: 2.3rem;
+  line-height: 1.18;
   margin-bottom: 20px;
 }
 
@@ -254,10 +256,10 @@ img { max-width: 100%; display: block; }
 }
 
 /* Sections */
-.section { padding: 90px 0; }
+.section { padding: 104px 0; }
 .section-alt { background: var(--color-bg-alt); }
 
-.section-title { font-size: 2rem; }
+.section-title { font-size: 1.9rem; }
 .section-sub {
   color: var(--color-text-light);
   max-width: 620px;
@@ -333,12 +335,7 @@ img { max-width: 100%; display: block; }
   color: var(--color-olive);
 }
 .etapa-icone svg { width: 24px; height: 24px; }
-.etapa h4 {
-  font-family: 'Fraunces', serif;
-  font-size: 1.15rem;
-  color: var(--color-olive-dark);
-  margin: 0 0 8px;
-}
+.etapa h4 { font-size: 1.1rem; margin: 0 0 8px; }
 .etapa p {
   font-size: 0.85rem;
   color: var(--color-text-light);
