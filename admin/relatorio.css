@@ -151,17 +151,130 @@
 .rel-kpi strong.neg { color: #b3261e; }
 .rel-kpi span { font-size: 0.82rem; color: var(--color-text-light); }
 
-/* Barras horizontais genéricas */
+/* Barras horizontais genéricas — marca interativa com tooltip no hover/foco */
 .rel-barras { display: flex; flex-direction: column; gap: 10px; }
-.rel-barra-linha { display: grid; grid-template-columns: 220px 1fr 130px; align-items: center; gap: 14px; }
+.rel-barra-linha {
+  display: grid;
+  grid-template-columns: 220px 1fr 130px;
+  align-items: center;
+  gap: 14px;
+  padding: 4px 6px;
+  margin: 0 -6px;
+  border-radius: 8px;
+  cursor: default;
+  transition: background .12s ease;
+}
+.rel-barra-linha:hover, .rel-barra-linha:focus-visible {
+  background: var(--color-bg-alt);
+  outline: none;
+}
 .rel-barra-valor { white-space: nowrap; }
 .rel-barra-label { font-size: 0.9rem; color: var(--color-text); }
-.rel-barra-trilha { background: var(--color-bg-alt); border-radius: 999px; height: 14px; overflow: hidden; }
-.rel-barra-preenchimento { display: block; height: 100%; border-radius: 999px; background: var(--color-olive); }
+.rel-barra-trilha { background: var(--color-bg-alt); border-radius: 4px; height: 14px; overflow: hidden; }
+.rel-barra-preenchimento {
+  display: block;
+  height: 100%;
+  border-radius: 0 4px 4px 0;
+  background: var(--color-olive);
+  transition: filter .12s ease;
+}
+.rel-barra-linha:hover .rel-barra-preenchimento,
+.rel-barra-linha:focus-visible .rel-barra-preenchimento { filter: brightness(1.12); }
 .rel-barra-preenchimento.saida { background: #b3734a; }
 .rel-barra-preenchimento.total { background: var(--color-gold); }
 .rel-barra-valor { font-size: 0.88rem; font-weight: 600; text-align: right; color: var(--color-olive-dark); }
 .rel-barra-valor.neg { color: #b3261e; }
+
+/* Tooltip compartilhado (barras, dumbbell) */
+.rel-tooltip {
+  position: fixed;
+  z-index: 500;
+  pointer-events: none;
+  background: var(--color-olive-dark);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  box-shadow: 0 8px 24px rgba(0,0,0,.25);
+  opacity: 0;
+  transform: translate(-50%, calc(-100% - 10px));
+  transition: opacity .1s ease;
+  max-width: 260px;
+}
+.rel-tooltip.ativo { opacity: 1; }
+.rel-tooltip strong { display: block; font-size: 0.95rem; font-family: 'Fraunces', serif; }
+.rel-tooltip span { display: block; color: var(--color-beige); margin-top: 2px; }
+.rel-tooltip small { display: block; color: var(--color-beige); opacity: .85; margin-top: 4px; font-size: 0.76rem; }
+
+/* Alternar para visão em tabela (acessibilidade + detalhe exato) */
+.rel-ver-tabela { margin-top: 14px; }
+.rel-ver-tabela > summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-olive);
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.rel-ver-tabela > summary::-webkit-details-marker { display: none; }
+.rel-ver-tabela > summary::before { content: '▸'; transition: transform .12s ease; display: inline-block; }
+.rel-ver-tabela[open] > summary::before { transform: rotate(90deg); }
+.rel-ver-tabela > summary:hover { color: var(--color-olive-dark); }
+.rel-ver-tabela .rel-tabela { margin-top: 12px; }
+
+/* Dumbbell (orçado -> realizado) */
+.rel-dumbbell { display: flex; flex-direction: column; gap: 14px; }
+.rel-dumbbell-linha {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  align-items: center;
+  gap: 14px;
+  padding: 4px 6px;
+  margin: 0 -6px;
+  border-radius: 8px;
+  cursor: default;
+}
+.rel-dumbbell-linha:hover, .rel-dumbbell-linha:focus-visible { background: var(--color-bg-alt); outline: none; }
+.rel-dumbbell-label { font-size: 0.9rem; color: var(--color-text); }
+.rel-dumbbell-trilha { position: relative; height: 14px; }
+.rel-dumbbell-trilha::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; top: 50%;
+  height: 1px;
+  background: var(--color-border);
+  transform: translateY(-50%);
+}
+.rel-dumbbell-conector { position: absolute; top: 50%; height: 2px; background: var(--color-text-light); transform: translateY(-50%); border-radius: 2px; }
+.rel-dumbbell-ponto {
+  position: absolute;
+  top: 50%;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  border: 2px solid var(--color-bg);
+  box-shadow: 0 0 0 1px var(--color-border);
+}
+.rel-dumbbell-ponto.orcado { background: var(--color-text-light); }
+.rel-dumbbell-ponto.realizado { background: var(--color-olive); }
+.rel-dumbbell-ponto.realizado.estourado { background: #b3261e; }
+.rel-dumbbell-legenda { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 18px; font-size: 0.8rem; color: var(--color-text-light); }
+.rel-dumbbell-legenda span { display: inline-flex; align-items: center; gap: 7px; }
+.rel-dumbbell-legenda i { display: inline-block; width: 11px; height: 11px; border-radius: 50%; }
+.rel-dumbbell-legenda i.orcado { background: var(--color-text-light); }
+.rel-dumbbell-legenda i.realizado { background: var(--color-olive); }
+.rel-dumbbell-legenda i.realizado.estourado { background: #b3261e; }
+
+/* Tabelas ordenáveis */
+.rel-tabela th[data-sort] { cursor: pointer; user-select: none; white-space: nowrap; }
+.rel-tabela th[data-sort]:hover { color: var(--color-olive); }
+.rel-tabela th[data-sort]::after { content: '↕'; margin-left: 5px; opacity: .4; font-size: .78em; }
+.rel-tabela th[data-sort].asc::after { content: '↑'; opacity: 1; }
+.rel-tabela th[data-sort].desc::after { content: '↓'; opacity: 1; }
+.rel-tabela tbody tr:hover { background: var(--color-bg-alt); }
 
 /* Tabela genérica */
 .rel-tabela { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
@@ -207,11 +320,15 @@
 
 .rel-fonte { font-size: 0.8rem; color: var(--color-text-light); font-style: italic; border-top: 1px solid var(--color-border); padding-top: 16px; margin-top: 10px; }
 
+.subtitulo-sm { font-size: 1rem; font-weight: 600; color: var(--color-olive-dark); margin: 28px 0 14px; }
+.subtitulo-sm:first-of-type { margin-top: 0; }
+
 @media (max-width: 900px) {
   .rel-app { flex-direction: column; }
   .rel-nav { width: 100%; height: auto; position: relative; flex-direction: row; flex-wrap: wrap; }
   .rel-nav-lista { flex-direction: row; flex-wrap: wrap; overflow: visible; }
   .rel-main { padding: 30px 20px 60px; }
   .rel-barra-linha { grid-template-columns: 1fr; gap: 4px; }
+  .rel-dumbbell-linha { grid-template-columns: 1fr; gap: 6px; }
   .rel-passo { grid-template-columns: 1fr; }
 }

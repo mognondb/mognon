@@ -135,18 +135,140 @@
       </section>`;
   }
 
-  function barrasHtml(itens, { negativo = false } = {}) {
+  // Gráfico de barras horizontais interativo: hover/foco destaca a barra e mostra
+  // um tooltip com o valor exato (e, quando fizer sentido, o % do total do grupo).
+  function graficoBarras(itens, { negativo = false, percentual = false } = {}) {
     const max = Math.max(...itens.map((i) => Math.abs(i.valor)), 1);
+    const total = itens.reduce((s, i) => s + Math.abs(i.valor), 0);
     return `<div class="rel-barras">${itens.map((i) => {
       const pct = Math.round((Math.abs(i.valor) / max) * 100);
       const classe = i.tipo === 'total' ? 'total' : (i.valor < 0 || negativo ? 'saida' : '');
+      const participacao = percentual && total ? Math.abs(i.valor) / total : null;
       return `
-        <div class="rel-barra-linha">
+        <div class="rel-barra-linha" tabindex="0" data-tt-label="${escapeHtml(i.label)}" data-tt-valor="${escapeHtml(fmtBRL(i.valor))}" ${participacao != null ? `data-tt-extra="${escapeHtml(`${fmtPct(participacao)} do total`)}"` : ''}>
           <span class="rel-barra-label">${escapeHtml(i.label)}</span>
           <span class="rel-barra-trilha"><span class="rel-barra-preenchimento ${classe}" style="width:${pct}%"></span></span>
           <span class="rel-barra-valor ${i.valor < 0 ? 'neg' : ''}">${fmtBRL(i.valor)}</span>
         </div>`;
     }).join('')}</div>`;
+  }
+
+  // Envolve um gráfico com um <details> nativo mostrando os mesmos dados em
+  // tabela — sempre existe uma forma de ler os valores exatos sem depender do hover.
+  function comTabela(graficoHtml, colunas, linhas) {
+    const tabela = `
+      <table class="rel-tabela">
+        <thead><tr>${colunas.map((c) => `<th>${escapeHtml(c)}</th>`).join('')}</tr></thead>
+        <tbody>${linhas.map((linha) => `<tr>${linha.map((v, i) => `<td class="${i === 0 ? '' : 'num'}">${escapeHtml(v)}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table>`;
+    return `${graficoHtml}<details class="rel-ver-tabela"><summary>Ver como tabela</summary>${tabela}</details>`;
+  }
+
+  // Dumbbell: orçado -> realizado por categoria, na mesma escala, cor indicando
+  // se o realizado ficou dentro (olive) ou fora (vermelho) do orçado.
+  function graficoDumbbell(categorias) {
+    const max = Math.max(...categorias.flatMap((c) => [Math.abs(c.orcado || 0), Math.abs(c.realizado || 0)]), 1);
+    const linhas = categorias.map((c) => {
+      const orcado = Number(c.orcado || 0);
+      const realizado = Number(c.realizado || 0);
+      const pO = (Math.abs(orcado) / max) * 100;
+      const pR = (Math.abs(realizado) / max) * 100;
+      const despesa = (c.tipo || '').toLowerCase().includes('desp');
+      const estourado = despesa ? realizado > orcado : realizado < orcado;
+      const lo = Math.min(pO, pR);
+      const hi = Math.max(pO, pR);
+      const desvio = realizado - orcado;
+      return `
+        <div class="rel-dumbbell-linha" tabindex="0"
+             data-tt-label="${escapeHtml(c.categoria)}"
+             data-tt-valor="${escapeHtml(fmtBRL(realizado))}"
+             data-tt-extra="${escapeHtml(`Orçado: ${fmtBRL(orcado)} · Desvio: ${fmtBRL(desvio)}`)}">
+          <span class="rel-dumbbell-label">${escapeHtml(c.categoria)}</span>
+          <span class="rel-dumbbell-trilha">
+            <span class="rel-dumbbell-conector" style="left:${lo}%; width:${hi - lo}%"></span>
+            <span class="rel-dumbbell-ponto orcado" style="left:${pO}%"></span>
+            <span class="rel-dumbbell-ponto realizado ${estourado ? 'estourado' : ''}" style="left:${pR}%"></span>
+          </span>
+        </div>`;
+    }).join('');
+    return `
+      <div class="rel-dumbbell">${linhas}</div>
+      <div class="rel-dumbbell-legenda">
+        <span><i class="rel-dumbbell-ponto orcado"></i> Orçado</span>
+        <span><i class="rel-dumbbell-ponto realizado"></i> Realizado (dentro do orçado)</span>
+        <span><i class="rel-dumbbell-ponto realizado estourado"></i> Realizado (fora do orçado)</span>
+      </div>`;
+  }
+
+  // ---------- Tooltip compartilhado (barras e dumbbell) ----------
+
+  let tooltipEl = null;
+  function garantirTooltip() {
+    if (tooltipEl) return tooltipEl;
+    tooltipEl = document.createElement('div');
+    tooltipEl.className = 'rel-tooltip';
+    tooltipEl.setAttribute('role', 'tooltip');
+    document.body.appendChild(tooltipEl);
+    return tooltipEl;
+  }
+
+  function mostrarTooltip(alvo, x, y) {
+    const tt = garantirTooltip();
+    const { ttLabel, ttValor, ttExtra } = alvo.dataset;
+    if (!ttLabel) return;
+    tt.innerHTML = `<strong>${escapeHtml(ttValor || '')}</strong><span>${escapeHtml(ttLabel)}</span>${ttExtra ? `<small>${escapeHtml(ttExtra)}</small>` : ''}`;
+    tt.style.left = `${x}px`;
+    tt.style.top = `${y}px`;
+    tt.classList.add('ativo');
+  }
+  function esconderTooltip() {
+    if (tooltipEl) tooltipEl.classList.remove('ativo');
+  }
+
+  // Liga o tooltip por delegação de evento a todo .rel-barra-linha/.rel-dumbbell-linha
+  // inserido no DOM — funciona tanto no mouse (hover) quanto no teclado (foco).
+  function ativarTooltips(raiz) {
+    raiz.querySelectorAll('.rel-barra-linha[data-tt-label], .rel-dumbbell-linha[data-tt-label]').forEach((el) => {
+      el.addEventListener('pointerenter', (e) => mostrarTooltip(el, e.clientX, e.clientY));
+      el.addEventListener('pointermove', (e) => mostrarTooltip(el, e.clientX, e.clientY));
+      el.addEventListener('pointerleave', esconderTooltip);
+      el.addEventListener('focus', () => {
+        const rect = el.getBoundingClientRect();
+        mostrarTooltip(el, rect.left + 20, rect.top + rect.height / 2);
+      });
+      el.addEventListener('blur', esconderTooltip);
+    });
+  }
+
+  // ---------- Tabelas ordenáveis (clique no cabeçalho) ----------
+
+  function ativarOrdenacao(raiz) {
+    raiz.querySelectorAll('.rel-tabela[data-sortable] th[data-sort]').forEach((th, index, todas) => {
+      th.addEventListener('click', () => {
+        const table = th.closest('table');
+        const tbody = table.querySelector('tbody');
+        const linhaTotal = tbody.querySelector('tr.total');
+        const linhas = Array.from(tbody.querySelectorAll('tr:not(.total)'));
+        const colIndex = Array.from(th.parentNode.children).indexOf(th);
+        const crescente = !th.classList.contains('asc');
+
+        todas.forEach((t) => t.classList.remove('asc', 'desc'));
+        th.classList.add(crescente ? 'asc' : 'desc');
+
+        const tipo = th.dataset.sort;
+        linhas.sort((a, b) => {
+          const va = a.children[colIndex]?.dataset.v ?? a.children[colIndex]?.textContent ?? '';
+          const vb = b.children[colIndex]?.dataset.v ?? b.children[colIndex]?.textContent ?? '';
+          const cmp = tipo === 'num'
+            ? Number(va) - Number(vb)
+            : String(va).localeCompare(String(vb), 'pt-BR');
+          return crescente ? cmp : -cmp;
+        });
+
+        linhas.forEach((tr) => tbody.appendChild(tr));
+        if (linhaTotal) tbody.appendChild(linhaTotal);
+      });
+    });
   }
 
   const TITULOS_TIPO = {
@@ -156,9 +278,13 @@
   };
 
   function finalizar(secoes, nav) {
-    document.getElementById('relMain').innerHTML = secoes.join('');
+    const main = document.getElementById('relMain');
+    main.innerHTML = secoes.join('');
     document.getElementById('navLista').innerHTML = nav.map(([id, label]) =>
       `<li><a href="#${id}">${escapeHtml(label)}</a></li>`).join('');
+
+    ativarTooltips(main);
+    ativarOrdenacao(main);
 
     const links = Array.from(document.querySelectorAll('.rel-nav-lista a'));
     const alvos = links.map((l) => document.getElementById(l.getAttribute('href').slice(1))).filter(Boolean);
@@ -255,25 +381,44 @@
     if (r.formacaoCaixa?.itens?.length) {
       nav.push(['formacao', 'Formação do caixa']);
       secoes.push(secao('formacao', 'Como o caixa se formou', 'Formação do resultado de caixa', r.formacaoCaixa.titulo || '',
-        barrasHtml(r.formacaoCaixa.itens)));
+        comTabela(
+          graficoBarras(r.formacaoCaixa.itens),
+          ['Item', 'Valor'],
+          r.formacaoCaixa.itens.map((i) => [i.label, fmtBRL(i.valor)]),
+        )));
     }
 
     // Receita por serviço
     if (r.receitaPorServico?.length) {
       nav.push(['receita', 'Receita por serviço']);
-      secoes.push(secao('receita', 'De onde veio', 'Receita por serviço', '', barrasHtml(r.receitaPorServico)));
+      secoes.push(secao('receita', 'De onde veio', 'Receita por serviço', '',
+        comTabela(
+          graficoBarras(r.receitaPorServico, { percentual: true }),
+          ['Serviço', 'Valor'],
+          r.receitaPorServico.map((i) => [i.label, fmtBRL(i.valor)]),
+        )));
     }
 
     // Despesas por grupo
     if (r.despesasPorGrupo?.length) {
       nav.push(['despesas-grupo', 'Despesas por grupo']);
-      secoes.push(secao('despesas-grupo', 'Para onde foi', 'Despesas por grupo', '', barrasHtml(r.despesasPorGrupo, { negativo: true })));
+      secoes.push(secao('despesas-grupo', 'Para onde foi', 'Despesas por grupo', '',
+        comTabela(
+          graficoBarras(r.despesasPorGrupo, { negativo: true, percentual: true }),
+          ['Grupo', 'Valor'],
+          r.despesasPorGrupo.map((i) => [i.label, fmtBRL(i.valor)]),
+        )));
     }
 
     // Despesas por subcategoria
     if (r.despesasPorSubcategoria?.length) {
       nav.push(['despesas-sub', 'Despesas por subcategoria']);
-      secoes.push(secao('despesas-sub', 'Detalhe', 'Despesas por subcategoria', '', barrasHtml(r.despesasPorSubcategoria, { negativo: true })));
+      secoes.push(secao('despesas-sub', 'Detalhe', 'Despesas por subcategoria', '',
+        comTabela(
+          graficoBarras(r.despesasPorSubcategoria, { negativo: true, percentual: true }),
+          ['Subcategoria', 'Valor'],
+          r.despesasPorSubcategoria.map((i) => [i.label, fmtBRL(i.valor)]),
+        )));
     }
 
     // Produção por profissional
@@ -282,17 +427,23 @@
       const totalProd = r.producaoPorProfissional.reduce((s, p) => s + Number(p.produzido || 0), 0);
       const totalReceb = r.producaoPorProfissional.reduce((s, p) => s + Number(p.recebido || 0), 0);
       nav.push(['equipe', 'Produção por profissional']);
-      secoes.push(secao('equipe', 'Equipe', 'Produção e recebimento por profissional', '', `
-        <table class="rel-tabela">
-          <thead><tr><th>Profissional</th><th>Sessões</th><th>Produzido</th><th>Recebido</th><th>% recebido</th></tr></thead>
+      secoes.push(secao('equipe', 'Equipe', 'Produção e recebimento por profissional', 'Clique no cabeçalho pra ordenar.', `
+        <table class="rel-tabela" data-sortable>
+          <thead><tr>
+            <th data-sort="texto">Profissional</th>
+            <th data-sort="num">Sessões</th>
+            <th data-sort="num">Produzido</th>
+            <th data-sort="num">Recebido</th>
+            <th data-sort="num">% recebido</th>
+          </tr></thead>
           <tbody>
             ${r.producaoPorProfissional.map((p) => `
               <tr>
                 <td>${escapeHtml(p.profissional)}</td>
-                <td class="num">${p.sessoes}</td>
-                <td class="num">${fmtBRL(p.produzido)}</td>
-                <td class="num">${fmtBRL(p.recebido)}</td>
-                <td class="num">${p.produzido ? fmtPct(p.recebido / p.produzido) : '—'}</td>
+                <td class="num" data-v="${p.sessoes}">${p.sessoes}</td>
+                <td class="num" data-v="${p.produzido}">${fmtBRL(p.produzido)}</td>
+                <td class="num" data-v="${p.recebido}">${fmtBRL(p.recebido)}</td>
+                <td class="num" data-v="${p.produzido ? p.recebido / p.produzido : -1}">${p.produzido ? fmtPct(p.recebido / p.produzido) : '—'}</td>
               </tr>`).join('')}
             <tr class="total">
               <td>Total</td>
@@ -352,8 +503,14 @@
     // Contas a pagar
     if (r.contasAPagarPorMes?.length || r.contasAPagarPorCategoria?.length) {
       nav.push(['apagar', 'Contas a pagar']);
-      const porMes = r.contasAPagarPorMes?.length ? barrasHtml(r.contasAPagarPorMes.map((m) => ({ label: m.mes, valor: m.valor })), { negativo: true }) : '';
-      const porCat = r.contasAPagarPorCategoria?.length ? barrasHtml(r.contasAPagarPorCategoria.map((c) => ({ label: c.label, valor: c.valor })), { negativo: true }) : '';
+      const porMes = r.contasAPagarPorMes?.length ? comTabela(
+        graficoBarras(r.contasAPagarPorMes.map((m) => ({ label: m.mes, valor: m.valor })), { negativo: true }),
+        ['Mês', 'Valor'], r.contasAPagarPorMes.map((m) => [m.mes, fmtBRL(m.valor)]),
+      ) : '';
+      const porCat = r.contasAPagarPorCategoria?.length ? comTabela(
+        graficoBarras(r.contasAPagarPorCategoria.map((c) => ({ label: c.label, valor: c.valor })), { negativo: true, percentual: true }),
+        ['Categoria', 'Valor'], r.contasAPagarPorCategoria.map((c) => [c.label, fmtBRL(c.valor)]),
+      ) : '';
       secoes.push(secao('apagar', 'Próximos meses', 'Contas a pagar em aberto', '', `
         ${porMes ? `<h3 class="subtitulo-sm">Por mês</h3>${porMes}` : ''}
         ${porCat ? `<h3 class="subtitulo-sm">Por categoria</h3>${porCat}` : ''}`));
@@ -410,9 +567,20 @@
       const totalRealizado = r.categorias.reduce((s, c) => s + Number(c.realizado || 0), 0);
       const totalDesvio = totalRealizado - totalOrcado;
       nav.push(['categorias', 'Orçado vs. Realizado']);
-      secoes.push(secao('categorias', 'Por categoria', 'Orçado vs. Realizado', '', `
-        <table class="rel-tabela">
-          <thead><tr><th>Categoria</th><th>Tipo</th><th>Orçado</th><th>Realizado</th><th>Desvio</th><th>Desvio %</th></tr></thead>
+      secoes.push(secao('categorias', 'Por categoria', 'Orçado vs. Realizado', 'O ponto cinza é o orçado, o colorido é o realizado — vermelho quando ficou fora do orçado.',
+        graficoDumbbell(r.categorias)));
+
+      nav.push(['categorias-detalhe', 'Desvio por categoria']);
+      secoes.push(secao('categorias-detalhe', 'Detalhe', 'Desvio por categoria', 'Clique no cabeçalho pra ordenar.', `
+        <table class="rel-tabela" data-sortable>
+          <thead><tr>
+            <th data-sort="texto">Categoria</th>
+            <th data-sort="texto">Tipo</th>
+            <th data-sort="num">Orçado</th>
+            <th data-sort="num">Realizado</th>
+            <th data-sort="num">Desvio</th>
+            <th data-sort="num">Desvio %</th>
+          </tr></thead>
           <tbody>
             ${r.categorias.map((c) => {
               const orcado = Number(c.orcado || 0);
@@ -423,10 +591,10 @@
                 <tr>
                   <td>${escapeHtml(c.categoria)}</td>
                   <td>${escapeHtml(c.tipo)}</td>
-                  <td class="num">${fmtBRL(orcado)}</td>
-                  <td class="num">${fmtBRL(realizado)}</td>
-                  <td class="num ${desvio < 0 ? 'neg' : ''}">${fmtBRL(desvio)}</td>
-                  <td class="num ${desvio < 0 ? 'neg' : ''}">${desvioPct != null ? fmtPct(desvioPct) : '—'}</td>
+                  <td class="num" data-v="${orcado}">${fmtBRL(orcado)}</td>
+                  <td class="num" data-v="${realizado}">${fmtBRL(realizado)}</td>
+                  <td class="num ${desvio < 0 ? 'neg' : ''}" data-v="${desvio}">${fmtBRL(desvio)}</td>
+                  <td class="num ${desvio < 0 ? 'neg' : ''}" data-v="${desvioPct ?? 0}">${desvioPct != null ? fmtPct(desvioPct) : '—'}</td>
                 </tr>`;
             }).join('')}
             <tr class="total">
@@ -473,19 +641,27 @@
       const totalDescontos = r.comissoes.reduce((s, c) => s + Number(c.descontos || 0), 0);
       const totalLiquido = r.comissoes.reduce((s, c) => s + Number(c.valorLiquido || 0), 0);
       nav.push(['comissoes', 'Comissões por serviço']);
-      secoes.push(secao('comissoes', 'Detalhe', 'Comissões por serviço', '', `
-        <table class="rel-tabela">
-          <thead><tr><th>Prestador</th><th>Serviço</th><th>Valor do serviço</th><th>% comissão</th><th>Comissão</th><th>Descontos</th><th>Líquido</th></tr></thead>
+      secoes.push(secao('comissoes', 'Detalhe', 'Comissões por serviço', 'Clique no cabeçalho pra ordenar.', `
+        <table class="rel-tabela" data-sortable>
+          <thead><tr>
+            <th data-sort="texto">Prestador</th>
+            <th data-sort="texto">Serviço</th>
+            <th data-sort="num">Valor do serviço</th>
+            <th data-sort="num">% comissão</th>
+            <th data-sort="num">Comissão</th>
+            <th data-sort="num">Descontos</th>
+            <th data-sort="num">Líquido</th>
+          </tr></thead>
           <tbody>
             ${r.comissoes.map((c) => `
               <tr>
                 <td>${escapeHtml(c.prestador)}</td>
                 <td>${escapeHtml(c.servico)}</td>
-                <td class="num">${fmtBRL(c.valorServico)}</td>
-                <td class="num">${c.percComissao != null ? fmtPct(c.percComissao / 100) : '—'}</td>
-                <td class="num">${fmtBRL(c.valorComissao)}</td>
-                <td class="num ${c.descontos ? 'neg' : ''}">${c.descontos ? fmtBRL(-Math.abs(c.descontos)) : fmtBRL(0)}</td>
-                <td class="num">${fmtBRL(c.valorLiquido)}</td>
+                <td class="num" data-v="${c.valorServico}">${fmtBRL(c.valorServico)}</td>
+                <td class="num" data-v="${c.percComissao ?? 0}">${c.percComissao != null ? fmtPct(c.percComissao / 100) : '—'}</td>
+                <td class="num" data-v="${c.valorComissao}">${fmtBRL(c.valorComissao)}</td>
+                <td class="num ${c.descontos ? 'neg' : ''}" data-v="${c.descontos || 0}">${c.descontos ? fmtBRL(-Math.abs(c.descontos)) : fmtBRL(0)}</td>
+                <td class="num" data-v="${c.valorLiquido}">${fmtBRL(c.valorLiquido)}</td>
               </tr>`).join('')}
             <tr class="total">
               <td colspan="2">Total</td>
@@ -506,7 +682,12 @@
       }, {}));
       if (porPrestador.length > 1) {
         nav.push(['por-prestador', 'Por prestador']);
-        secoes.push(secao('por-prestador', 'Resumo', 'Comissão líquida por prestador', '', barrasHtml(porPrestador.map((p) => ({ label: p.prestador, valor: p.valor })))));
+        secoes.push(secao('por-prestador', 'Resumo', 'Comissão líquida por prestador', '',
+          comTabela(
+            graficoBarras(porPrestador.map((p) => ({ label: p.prestador, valor: p.valor })), { percentual: true }),
+            ['Prestador', 'Comissão líquida'],
+            porPrestador.map((p) => [p.prestador, fmtBRL(p.valor)]),
+          )));
       }
     }
 
