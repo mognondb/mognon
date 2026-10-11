@@ -42,45 +42,47 @@
     </div>
   </header>
 
-  <nav class="admin-tabs">
-    <button class="admin-tab active" data-produto="fechamento">Fechamento Financeiro</button>
-    <button class="admin-tab" data-produto="orcamento">Acompanhamento Orçamentário</button>
-    <button class="admin-tab" data-produto="comissoes">Demonstrativo de Comissões</button>
-  </nav>
-
   <main class="admin-main">
-    <p class="admin-field-hint" id="dicaProduto" style="margin-bottom:16px;"></p>
-
-    <template id="produtoPanelTemplate">
-      <section class="admin-tab-panel">
-        <div class="admin-toolbar">
-          <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <button class="btn btn-primary" data-acao="importar">Importar planilha (.xlsx)</button>
-            <a class="btn btn-ghost" data-acao="modelo" href="#" download>Baixar modelo</a>
-            <button class="btn btn-outline" data-acao="embed">Anexar link público (Power BI / Looker Studio)</button>
-            <input type="file" accept=".xlsx" hidden data-acao="inputArquivo">
-          </div>
-          <div class="admin-toolbar-actions">
-            <button class="btn btn-ghost btn-sm" data-acao="recarregar">Recarregar</button>
-          </div>
-        </div>
-        <p class="admin-feedback" data-acao="feedback" role="status"></p>
-        <div class="admin-lista" data-acao="lista">
-          <p class="loading-placeholder">Carregando...</p>
-        </div>
-      </section>
-    </template>
-
-    <div id="paineisProdutos"></div>
+    <div class="admin-toolbar">
+      <button class="btn btn-primary" id="btnNovoDashboard">+ Novo dashboard</button>
+      <div class="admin-toolbar-actions">
+        <button class="btn btn-ghost btn-sm" id="btnRecarregar">Recarregar</button>
+      </div>
+    </div>
+    <p class="admin-feedback" id="feedbackLista" role="status"></p>
+    <div class="admin-lista" id="listaDashboards">
+      <p class="loading-placeholder">Carregando...</p>
+    </div>
   </main>
 </div>
 
-<!-- MODAL: ANEXAR LINK PÚBLICO -->
+<!-- MODAL: NOVO DASHBOARD (escolha do modo) -->
+<div class="admin-modal" id="modalNovo" hidden>
+  <div class="admin-modal-box">
+    <h2>Novo dashboard</h2>
+    <p class="admin-field-hint" style="margin-top:0;">Escolha como você quer montar este dashboard.</p>
+    <div class="admin-opcoes-escolha">
+      <button type="button" class="admin-opcao-escolha" id="btnNovoConstrutor">
+        <strong>Construtor livre</strong>
+        <span>Monte com gráficos de barras, linha, pizza, tabelas, indicadores e texto — adicione blocos e arraste para posicionar.</span>
+      </button>
+      <button type="button" class="admin-opcao-escolha" id="btnNovoEmbed">
+        <strong>Link público</strong>
+        <span>Já tem um dashboard pronto no Power BI ou Looker Studio? Cole aqui o link de incorporação (embed).</span>
+      </button>
+    </div>
+    <div class="admin-modal-actions">
+      <button type="button" class="btn btn-ghost" id="btnCancelarNovo">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: LINK PÚBLICO (criar ou editar) -->
 <div class="admin-modal" id="modalEmbed" hidden>
   <div class="admin-modal-box">
-    <h2 id="modalEmbedTitulo">Anexar link público</h2>
+    <h2 id="modalEmbedTitulo">Link público</h2>
     <form id="formEmbed">
-      <label for="eLinkPeriodo">Período *</label>
+      <label for="eLinkPeriodo">Título / Período *</label>
       <input type="text" id="eLinkPeriodo" required placeholder="Ex: Setembro/2026">
       <label for="eLinkDescricao">Descrição (opcional)</label>
       <input type="text" id="eLinkDescricao" placeholder="Ex: Dashboard de vendas no Power BI">
@@ -102,23 +104,6 @@
   </div>
 </div>
 
-<!-- MODAL: PRÉVIA DA IMPORTAÇÃO -->
-<div class="admin-modal" id="modalPreview" hidden>
-  <div class="admin-modal-box">
-    <h2>Confira antes de salvar</h2>
-    <p class="admin-field-hint">
-      Isto é só uma conferência rápida do que foi lido da planilha — os dados completos
-      aparecem na apresentação depois de salvo.
-    </p>
-    <div id="previewResumo"></div>
-    <div class="admin-modal-actions">
-      <button type="button" class="btn btn-outline" id="btnCancelarPreview">Cancelar</button>
-      <button type="button" class="btn btn-primary" id="btnConfirmarPreview">Salvar relatório</button>
-    </div>
-  </div>
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="cliente.js"></script>
 </body>
 </html>

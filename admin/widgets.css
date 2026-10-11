@@ -1,0 +1,156 @@
+/* Grade de widgets do construtor — usada tanto na apresentação (leitura) quanto
+   no construtor (edição). Grade de 12 colunas, linhas de altura fixa (ver
+   admin/widgets.js: ROW_H/GAP) — cada widget ocupa um retângulo dessa grade. */
+.cw-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  grid-auto-rows: 32px;
+  gap: 10px;
+}
+.cw-grid-vazia { grid-template-columns: 1fr; min-height: 80px; align-items: center; }
+.cw-vazio-grid { color: var(--color-text-light); font-size: 0.88rem; text-align: center; margin: 0; }
+.cw-vazio { color: var(--color-text-light); font-size: 0.84rem; margin: 0; }
+
+.cw-widget {
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(46,46,46,.04);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+.cw-widget-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+.cw-widget-head h4 {
+  flex: 1;
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--color-olive-dark);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cw-widget-body {
+  flex: 1;
+  padding: 14px 16px;
+  overflow: auto;
+  min-height: 0;
+}
+.cw-widget-body > .rel-barras,
+.cw-widget-body > svg,
+.cw-widget-body > .cw-pizza-wrap,
+.cw-widget-body > .cw-kpi-grande { height: 100%; }
+
+/* ---- Linha ---- */
+.cw-linha-svg { width: 100%; height: 190px; display: block; }
+.cw-linha-caminho { fill: none; stroke: var(--color-olive); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.cw-linha-ponto { fill: var(--color-olive); cursor: default; }
+.cw-linha-ponto:hover, .cw-linha-ponto:focus-visible { fill: var(--color-olive-dark); outline: none; }
+.cw-linha-rotulo { font-size: 9px; fill: var(--color-text-light); font-family: 'Inter', sans-serif; }
+.cw-linha-eixo-zero { stroke: var(--color-border); stroke-width: 1; }
+
+/* ---- Pizza / rosca ---- */
+.cw-pizza-wrap { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.cw-pizza-donut {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  mask: radial-gradient(circle, transparent 44%, #000 45%);
+  -webkit-mask: radial-gradient(circle, transparent 44%, #000 45%);
+}
+.cw-pizza-legenda { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 140px; }
+.cw-pizza-legenda li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--color-text);
+  cursor: default;
+  padding: 2px 4px;
+  border-radius: 6px;
+}
+.cw-pizza-legenda li:hover, .cw-pizza-legenda li:focus-visible { background: var(--color-bg-alt); outline: none; }
+.cw-pizza-legenda i { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+.cw-pizza-legenda span { margin-left: auto; font-weight: 600; color: var(--color-olive-dark); font-variant-numeric: tabular-nums; }
+
+/* ---- KPI ---- */
+.cw-kpi-grande { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px; }
+.cw-kpi-grande strong { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 2rem; color: var(--color-olive-dark); letter-spacing: -0.01em; line-height: 1.1; }
+.cw-kpi-grande span { font-size: 0.84rem; color: var(--color-text-light); }
+.cw-kpi-grande small { font-size: 0.76rem; color: var(--color-gold); font-weight: 600; }
+
+/* ---- Texto ---- */
+.cw-texto-paragrafo { margin: 0 0 10px; font-size: 0.9rem; line-height: 1.55; color: var(--color-text); }
+.cw-texto-paragrafo:last-child { margin-bottom: 0; }
+
+/* ---- Segmentação por período ---- */
+.cw-seg-botoes { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; height: 100%; }
+.cw-seg-btn {
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 7px 16px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background .12s ease, color .12s ease;
+}
+.cw-seg-btn:hover { background: var(--color-beige); }
+.cw-seg-btn.ativo { background: var(--color-olive); color: #fff; border-color: var(--color-olive); }
+
+/* ---- Controles de edição (só no construtor) ---- */
+.cw-drag { cursor: grab; color: var(--color-text-light); font-size: 0.8rem; letter-spacing: -2px; user-select: none; touch-action: none; }
+.cw-drag:active { cursor: grabbing; }
+.cw-widget-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.cw-icon-btn {
+  background: none;
+  border: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  color: var(--color-text-light);
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.cw-icon-btn:hover { background: var(--color-bg-alt); color: var(--color-olive-dark); }
+.cw-btn-remover:hover { color: #b3261e; }
+.cw-resize {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+.cw-resize::after {
+  content: '';
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--color-border);
+  border-bottom: 2px solid var(--color-border);
+}
+.cw-widget { position: relative; }
+.cw-widget.cw-arrastando, .cw-widget.cw-redimensionando { opacity: 0.85; box-shadow: 0 10px 24px rgba(46,46,46,.18); z-index: 20; }
+
+@media (max-width: 720px) {
+  .cw-pizza-wrap { flex-direction: column; align-items: flex-start; }
+}

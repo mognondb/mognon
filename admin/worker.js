@@ -479,12 +479,18 @@ export default {
         } catch {
           return jsonResponse({ message: 'JSON inválido' }, 400, env);
         }
-        const tiposValidos = ['fechamento', 'orcamento', 'comissoes'];
+        // "personalizado" é o tipo usado pelo construtor de dashboards (atual);
+        // os outros três continuam aceitos aqui só para o painel conseguir
+        // ativar/desativar e excluir relatórios antigos já existentes no KV.
+        const tiposValidos = ['fechamento', 'orcamento', 'comissoes', 'personalizado'];
         if (!relatorio.clienteId || !relatorio.periodo || !tiposValidos.includes(relatorio.tipo)) {
-          return jsonResponse({ message: 'Informe o cliente, o período e um tipo válido (fechamento, orcamento ou comissoes)' }, 400, env);
+          return jsonResponse({ message: 'Informe o cliente, o período e um tipo válido' }, 400, env);
         }
         if (relatorio.modo === 'embed' && !relatorio.embedUrl) {
           return jsonResponse({ message: 'Informe o link do dashboard (Power BI / Looker Studio)' }, 400, env);
+        }
+        if (relatorio.tipo === 'personalizado' && relatorio.modo !== 'embed' && !Array.isArray(relatorio.abas)) {
+          return jsonResponse({ message: 'Informe ao menos uma aba com widgets' }, 400, env);
         }
         const idFinal = relatorio.id || slugify(`${relatorio.clienteId}-${relatorio.tipo}-${relatorio.periodo}`);
         relatorio.id = idFinal;

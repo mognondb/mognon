@@ -245,6 +245,10 @@
   // inserido no DOM — funciona tanto no mouse (hover) quanto no teclado (foco).
   function ativarTooltips(raiz) {
     raiz.querySelectorAll('.rel-barra-linha[data-tt-label], .rel-dumbbell-linha[data-tt-label]').forEach((el) => {
+      // Dashboards personalizados reaproveitam essas mesmas classes (admin/widgets.js) e já
+      // ativam seu próprio tooltip — evita ligar o listener duas vezes no mesmo elemento.
+      if (el.dataset.ttBound) return;
+      el.dataset.ttBound = '1';
       el.addEventListener('pointerenter', (e) => mostrarTooltip(el, e.clientX, e.clientY));
       el.addEventListener('pointermove', (e) => mostrarTooltip(el, e.clientX, e.clientY));
       el.addEventListener('pointerleave', esconderTooltip);
@@ -260,6 +264,8 @@
 
   function ativarOrdenacao(raiz) {
     raiz.querySelectorAll('.rel-tabela[data-sortable] th[data-sort]').forEach((th, index, todas) => {
+      if (th.dataset.sortBound) return;
+      th.dataset.sortBound = '1';
       th.addEventListener('click', () => {
         const table = th.closest('table');
         const tbody = table.querySelector('tbody');
@@ -336,7 +342,31 @@
     if (r.modo === 'embed') return renderizarEmbed(r);
     if (r.tipo === 'orcamento') return renderizarOrcamento(r);
     if (r.tipo === 'comissoes') return renderizarComissoes(r);
+    if (r.tipo === 'personalizado') return renderizarPersonalizado(r);
     return renderizarFechamento(r);
+  }
+
+  // ---------- Dashboard personalizado (construtor de blocos) ----------
+
+  function renderizarPersonalizado(r) {
+    const cabecalhoHtml = cabecalho('Dashboard', r.cliente, r.periodo,
+      `Preparado por ${r.preparadoPor || 'CM Soluções Financeiras'}${r.dataPreparo ? ` · ${r.dataPreparo}` : ''}`);
+
+    const abas = (r.abas && r.abas.length) ? r.abas : [{ id: 'aba-1', nome: 'Visão geral', widgets: [] }];
+    const nav = abas.map((aba) => [aba.id, aba.nome]);
+    const secoes = abas.map((aba) => CMWidgets.renderGrid(aba.widgets || [], { editable: false }));
+
+    const fontesHtml = r.fontes ? `<p class="rel-fonte">${escapeHtml(r.fontes)}</p>` : '';
+    finalizar(cabecalhoHtml, fontesHtml, secoes, nav);
+
+    const main = document.getElementById('relMain');
+    CMWidgets.ativarTooltips(main);
+    CMWidgets.ativarOrdenacao(main);
+    abas.forEach((aba) => {
+      const painel = main.querySelector(`.rel-tab-painel[data-tab="${aba.id}"]`);
+      const grid = painel ? painel.querySelector('.cw-grid') : null;
+      if (grid) CMWidgets.ativarSegmentacao(grid, aba.widgets || []);
+    });
   }
 
   // ---------- Embed (Power BI / Looker Studio) ----------

@@ -13,8 +13,11 @@ assets/downloads/           Planilhas gratuitas (CSV) disponíveis para download
 assets/img/                 Logo e imagens
 admin/                      Painel administrativo (escondido, não linkado no site)
 admin/worker.js             Código do servidor (Cloudflare Worker) usado pelo painel
-admin/cliente.html(.js)     Pasta de um cliente: lista e cadastra os relatórios dele
-admin/relatorio.html(.js/.css)  Apresentação de um relatório de fechamento
+admin/cliente.html(.js)     Pasta de um cliente: lista e cadastra os dashboards dele
+admin/construtor.html(.js/.css)  Construtor livre de dashboards (arrastar e soltar blocos)
+admin/widgets.js(.css)      Motor de blocos (gráficos/tabela/KPI/texto) — compartilhado
+                             entre o construtor e a apresentação
+admin/relatorio.html(.js/.css)  Apresentação de um dashboard ao cliente
 admin/README-servidor.md    Passo a passo para publicar o servidor
 robots.txt                  Bloqueia indexação de /admin/ por buscadores
 legacy-jekyll-boilerplate/  Arquivos antigos do scaffold padrão do GitHub Pages (não usados)
@@ -59,47 +62,49 @@ O painel não aparece no menu do site e é bloqueado em `robots.txt`, mas isso �
 não aparecer em buscas — quem de fato impede alguém de salvar algo é o usuário/senha
 verificado pelo servidor.
 
-### Clientes: fechamento, orçamento e comissões (apresentação ao vivo)
+### Clientes: construtor de dashboards (apresentação ao vivo)
 
 Uma terceira aba do painel, **"Clientes"**, funciona como uma pasta por cliente
-(`admin/cliente.html?id=<id>`): dentro de cada cliente você cadastra até três tipos de
-relatório, cada um por período (ex.: Instituto Luanda → Fechamento de Setembro/2026,
+(`admin/cliente.html?id=<id>`): dentro de cada cliente você cadastra quantos
+dashboards quiser, um por período (ex.: Instituto Luanda → Setembro/2026,
 Outubro/2026...), para apresentar numa reunião. Diferente dos infoprodutos (que são
 públicos), **esses dados de cliente nunca são públicos**: tanto a leitura quanto a
 gravação exigem login no servidor.
 
 - **Aba "Clientes"** (`admin/index.html`): lista os clientes cadastrados, cria novos
-  (nome + observações) e exclui (excluir um cliente apaga também todos os relatórios
+  (nome + observações) e exclui (excluir um cliente apaga também todos os dashboards
   dele).
-- **Dentro de um cliente** (`admin/cliente.html?id=<id>`): três sub-abas, uma por
-  produto —
-  1. **Fechamento Financeiro** — fechamento de caixa mensal (receitas, despesas,
-     produção por profissional e, opcionalmente, estoque — essa seção só aparece na
-     apresentação se a planilha trouxer itens).
-  2. **Acompanhamento Orçamentário** — Orçado x Realizado por categoria (só pra
-     clientes que contratam esse acompanhamento).
-  3. **Demonstrativo de Comissões** — comissão por prestador/vendedor, com o serviço
-     prestado, valor, percentual e descontos de cada lançamento; um campo "Ramo"
-     serve só de rótulo de contexto (ex.: Serviços, Comércio, Saúde).
+- **Dentro de um cliente** (`admin/cliente.html?id=<id>`): uma lista única de
+  dashboards. O botão **"+ Novo dashboard"** oferece duas formas de criar um:
+  1. **Construtor livre** (`admin/construtor.html`) — monte o dashboard do zero:
+     clique num botão de bloco (Gráfico de barras, Linha, Pizza, Tabela, Indicador/KPI,
+     Bloco de texto ou Segmentação por período) para adicioná-lo à tela, arraste-o
+     pelo ícone ⠿⠿ para a posição desejada e arraste o canto inferior direito pra
+     redimensionar. Preencha os dados de cada bloco manualmente (linha por linha) ou
+     importando uma planilha (.xlsx — primeira coluna/linha como rótulo, demais como
+     valores). Crie quantas abas quiser pelo botão **"+ Nova aba"** (clique duas vezes
+     no nome de uma aba para renomeá-la).
 
-  Para cada produto, há **duas formas de alimentar o dashboard** — não existe mais
-  formulário manual:
-  - **Importar planilha (.xlsx)**: botão **"Baixar modelo"** gera o arquivo no formato
-    esperado daquele produto (abas nomeadas); depois de importar, uma prévia mostra um
-    resumo do que foi lido antes de confirmar o salvamento.
-  - **Anexar link público**: para quem já usa Power BI ou Looker Studio — cole o link
-    de **"Publicar na web" / "Embed"** (não o link comum de acesso) e a apresentação
-    mostra o dashboard embutido num iframe.
+     O bloco **Segmentação por período** cria botões (ex: "Jan/2026", "Fev/2026") que
+     trocam os dados de todos os outros blocos da mesma aba de uma vez — ao editar
+     qualquer outro bloco, a opção **"Aplicar a"** deixa escolher se o conteúdo é o
+     mesmo para todos os períodos ou diferente por período.
+  2. **Link público** — para quem já usa Power BI ou Looker Studio: cole o link de
+     **"Publicar na web" / "Embed"** (não o link comum de acesso) e a apresentação
+     mostra o dashboard embutido num iframe.
 
-  Cada relatório importado ou anexado pode ser marcado como ativo/inativo e removido.
-- **Apresentar ao cliente**: cada relatório salvo ganha uma página própria em
-  `admin/relatorio.html?id=<id>` (link "Abrir" na lista do cliente) — um dashboard
-  navegável por seções, pronta pra usar numa tela/projeção durante a reunião (ou, no
-  modo de link público, o próprio dashboard do Power BI/Looker Studio embutido). Pede
-  login própria (mesmo usuário/senha do painel) e tem um link de volta para a pasta do
-  cliente certo.
+  Cada dashboard pode ser editado, marcado como ativo/inativo e removido. Dashboards
+  antigos, criados antes do construtor (fechamento/orçamento/comissões importados de
+  planilha), continuam aparecendo na lista e podem ser abertos normalmente — só não
+  têm mais botão de editar, já que esse formato de criação foi substituído pelo
+  construtor livre.
+- **Apresentar ao cliente**: cada dashboard salvo ganha uma página própria em
+  `admin/relatorio.html?id=<id>` (link "Abrir" na lista do cliente) — navegável por
+  abas, pronta pra usar numa tela/projeção durante a reunião (ou, no modo de link
+  público, o próprio dashboard do Power BI/Looker Studio embutido). Pede login própria
+  (mesmo usuário/senha do painel) e tem um link de volta para a pasta do cliente certo.
 - Esses dados ficam só no Cloudflare KV (nunca no repositório Git) — por isso nenhum
-  cliente ou relatório real está versionado aqui.
+  cliente ou dashboard real está versionado aqui.
 
 ### Usuários com acesso limitado
 
@@ -109,13 +114,13 @@ outros acessos, cada um com uma permissão:
 
 - **Administrador** — acesso total ao painel, igual ao login mestre.
 - **Cliente** — só enxerga a pasta de **um** cliente específico
-  (`admin/cliente.html?id=<id>`), em modo leitura (sem importar planilha, anexar link,
-  ativar/desativar ou remover) — útil pra dar acesso só aos relatórios já publicados
-  daquele cliente.
-- **Dashboard** — só enxerga **um** relatório específico
+  (`admin/cliente.html?id=<id>`), em modo leitura (sem criar, editar, ativar/desativar
+  ou remover dashboards) — útil pra dar acesso só aos dashboards já publicados daquele
+  cliente.
+- **Dashboard** — só enxerga **um** dashboard específico
   (`admin/relatorio.html?id=<id>`), em modo leitura — útil pra compartilhar o link de
-  apresentação de um fechamento/orçamento/comissão só com quem precisa ver aquele, sem
-  dar acesso a mais nada.
+  apresentação de um dashboard só com quem precisa ver aquele, sem dar acesso a mais
+  nada.
 
 Essas senhas ficam guardadas no Cloudflare KV com hash (PBKDF2), nunca em texto puro —
 diferente do login mestre, que continua sendo um secret do Worker. Criar, editar e
@@ -179,10 +184,11 @@ painel e guarda os dados (gratuito, ~5 min, sem token nenhum). Sem isso, o paine
 fica no ar mas não consegue carregar nem salvar nada.
 
 **Se você já tinha publicado o Worker antes:** toda vez que `admin/worker.js` for
-atualizado (o arquivo ganhou rotas novas várias vezes — clientes/relatórios, usuários,
-e agora Diagnóstico Financeiro), copie o conteúdo novo para o Worker no Cloudflare
-(Edit code → colar → Save and Deploy). Nenhuma variável nova é obrigatória — só o
-`FORMSPREE_DIAGNOSTICO_URL` do item 1 acima, que é opcional.
+atualizado (o arquivo ganhou rotas e validações novas várias vezes — clientes/
+relatórios, usuários, Diagnóstico Financeiro, e agora o construtor de dashboards),
+copie o conteúdo novo para o Worker no Cloudflare (Edit code → colar → Save and
+Deploy). Nenhuma variável nova é obrigatória — só o `FORMSPREE_DIAGNOSTICO_URL` do
+item 1 acima, que é opcional.
 
 ### 5. Site público já busca os dados em tempo real
 `assets/js/main.js` (constante `ADMIN_API_URL`) já aponta pro Worker publicado — os
